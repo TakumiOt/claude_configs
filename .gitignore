@@ -1,0 +1,16 @@
+# Whitelist approach: ignore everything, then re-include config sources.
+/*
+!/.gitignore
+!/CLAUDE.md
+!/settings.json
+!/agents/
+!/guidelines/
+!/skills/
+!/commands/
+
+# Inside skills/, exclude packaged zips and runtime artifacts.
+skills/*.zip
+
+# Never commit credentials or local overrides even if re-included above.
+.credentials.json
+settings.local.json
