@@ -10,13 +10,6 @@ Agents and their responsibilities:
 2. **developer** — Implementation phase. Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor).
 3. **code-reviewer** — Review phase. Independently reviews changes for architecture compliance, dependency health, and business application concerns. Does NOT modify code.
 
-Standard workflow for any non-trivial feature or change:
-
-1. Invoke `architect` first to design the use case, ports, and error types.
-2. Invoke `developer` with the architect's output to implement via TDD.
-3. Invoke `code-reviewer` after implementation to get independent feedback.
-4. If blockers/suggestions are raised, re-invoke `developer` with the findings.
-
 ### Orchestration Loop (MANDATORY)
 
 For every non-trivial change, the main conversation MUST execute the following loop end-to-end **without pausing to ask the user between phases**. The point of delegating to agents is that the main thread orchestrates them; do not stop after architect or developer and wait for permission to proceed.
@@ -79,25 +72,18 @@ Adding a new external library/crate/package requires explicit approval. No agent
 
 ## Coding
 
-- No speculative features — only build what's needed now
-- Replace, don't deprecate
-- Functions must be under 50 lines
-- Write self-explanatory code — inline comments should explain "why", not "what"
-- Write docstrings in **English** for all public functions, classes, and modules
-- Do not leave commented-out code — delete it (git history preserves it)
-- Do not add TODO/FIXME without an associated issue or ticket
-- When compacting, preserve the list of modified files
+Size, docstrings, comments, and TODO rules are covered by the Definition of Done — they are not repeated here. Additional rules:
+
+- No speculative features — only build what's needed now.
+- Replace, don't deprecate — remove old code outright; git history preserves it.
+- Inline comments explain *why*, never *what*.
+- When compacting, preserve the list of modified files.
 
 ## Architecture & Error Handling
 
-IMPORTANT: Follow Clean Architecture. Layers inward → outward: **Entities → Use Cases → Adapters → Infrastructure**.
+IMPORTANT: Follow Clean Architecture. Layers inward → outward: **Entities → Use Cases → Adapters → Infrastructure**. Dependencies point inward only. Ports live in inner layers, implementations in outer layers. Framework types must not leak into Use Cases or Entities. Domain error types live in Entities / Use Cases; infrastructure exceptions are converted to domain errors at the boundary. Prefer explicit `Result` / `Either` over thrown exceptions where the language supports it.
 
-- Dependencies point inward only; inner layers never import from outer layers.
-- Ports (interfaces) are defined in inner layers and implemented in outer layers.
-- Framework-specific types must not leak into Use Cases or Entities.
-- New features start from the use case layer, never from the framework.
-- Domain error types live in Entities / Use Cases. Infrastructure exceptions are caught and converted to domain errors at the boundary — never propagated inward raw.
-- Use explicit `Result` / `Either` over thrown exceptions where the language supports it. Fail fast on unrecoverable errors; handle expected errors gracefully. Logging happens in the Infrastructure layer, not in domain logic.
+Agent files (`~/.claude/agents/*.md`) contain the detailed per-layer rules — they override this summary on conflict.
 
 ## Testing
 
