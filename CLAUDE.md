@@ -33,9 +33,9 @@ The user is consulted **only** at these points (never between phases of the loop
 - **Ambiguous requirements** that the architect cannot resolve from the available context.
 - **Non-convergence escalation**: if the loop has executed step 3 → step 4 → step 3 three times without converging, stop and escalate to the user with a summary of what is blocking convergence.
 
-**Git operations are entirely the user's responsibility.** No agent and no main-conversation flow may run `git commit` / `push` / `merge` / `rebase` / `reset` / `checkout -b` / branch deletion / tag operations — not even to ask for approval. Read-only commands (`git status` / `git diff` / `git log` / `git show`) remain available for investigation. Do not propose, suggest, or stage commits; the user handles all version control actions themselves.
-
 When invoking the next agent in the loop, always pass the previous agent's output (design artifacts, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
+
+Git operations are entirely the user's responsibility — see the `## Git Operations` section below. This applies inside the loop as well: no agent stages, commits, or proposes a commit.
 
 Exceptions (main conversation may handle directly):
 
@@ -49,17 +49,14 @@ When in doubt, delegate. Prefer invoking an agent over implementing directly.
 
 A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. The `code-reviewer` agent MUST reject any hand-off that skips these items.
 
-1. **Design artifacts exist**: `docs/design/<feature>.md` is written/updated and includes acceptance criteria (in Japanese). ADRs created when applicable.
-2. **Failing test first**: Every new behavior was introduced via a failing test before production code.
-3. **All tests pass**: Full test suite green. For Rust: run via `cargo make` (e.g. `cargo make test`). Do NOT use bare `cargo test` — project-standard task runner is `cargo make`.
-4. **Linter / static analysis clean**: For Rust: `cargo make` task for lint/clippy passes with no warnings. For other languages: equivalent project-standard task runner must pass.
-5. **Build succeeds**: `cargo make` build task passes (Rust) or language equivalent.
-6. **Docstrings present**: All public API elements (functions, structs, traits, modules visible across module boundaries) have **English** docstrings. Port docstrings start from the draft in the design document and are refined against the implementation.
-7. **Function size**: No function exceeds 50 lines.
-8. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
-9. **Modified file list reported**: The `developer` agent reports the full list of created/modified files at hand-off.
-10. **Independent review passed**: `code-reviewer` has reviewed the change and all 🔴 blockers are resolved. 🟡 suggestions are either addressed or explicitly deferred with rationale.
-11. **No Git operations performed**: No agent has executed (or proposed) any state-modifying git command. The user handles all commit/push/merge/rebase/branch operations themselves.
+1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with acceptance criteria in Japanese. ADRs created when applicable.
+2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/guidelines/testing.md`).
+3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
+4. **Docstrings present**: All public API elements have **English** docstrings. Port docstrings start from the draft in the design document and are refined against the implementation.
+5. **Function size**: No function exceeds 50 lines.
+6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
+7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
+8. **Independent review passed**: `code-reviewer` reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
 
 ### Dependency Approval Process (MANDATORY)
 
@@ -91,60 +88,33 @@ Adding a new external library/crate/package requires explicit approval. No agent
 - Do not add TODO/FIXME without an associated issue or ticket
 - When compacting, preserve the list of modified files
 
-## Architecture
+## Architecture & Error Handling
 
-IMPORTANT: Follow Clean Architecture principles.
+IMPORTANT: Follow Clean Architecture. Layers inward → outward: **Entities → Use Cases → Adapters → Infrastructure**.
 
-Layer structure (inner → outer):
-
-1. Entities — Core business rules, no external dependencies
-2. Use Cases — Application-specific logic, depends only on Entities
-3. Adapters — Controllers, presenters, gateways (implements interfaces)
-4. Infrastructure — Frameworks, DB, external APIs
-
-Rules:
-
-- Dependencies must always point inward — inner layers never import from outer layers
-- Define interfaces (ports) in inner layers, implement them in outer layers
-- Do not leak framework-specific types into use cases or entities
-- When adding a new feature, start from the use case layer, not from the framework
-
-## Error Handling
-
-- Define domain-specific error types in the Entities/Use Cases layer
-- Do not let infrastructure exceptions leak into inner layers — catch and convert at the boundary
-- Use explicit error types (Result/Either) over throwing exceptions where the language supports it
-- Fail fast on unrecoverable errors, handle gracefully on expected errors
-- Log errors at the Infrastructure layer, not in domain logic
+- Dependencies point inward only; inner layers never import from outer layers.
+- Ports (interfaces) are defined in inner layers and implemented in outer layers.
+- Framework-specific types must not leak into Use Cases or Entities.
+- New features start from the use case layer, never from the framework.
+- Domain error types live in Entities / Use Cases. Infrastructure exceptions are caught and converted to domain errors at the boundary — never propagated inward raw.
+- Use explicit `Result` / `Either` over thrown exceptions where the language supports it. Fail fast on unrecoverable errors; handle expected errors gracefully. Logging happens in the Infrastructure layer, not in domain logic.
 
 ## Testing
 
-IMPORTANT: Follow BDD (Behavior-Driven Development) with Detroit school (classicist) approach.
+IMPORTANT: Follow **BDD + Detroit school (classicist) TDD**. Use real objects for any module you own; reserve mocks for collaborators outside your control (DB, network, filesystem, clock, random, external APIs).
 
-Principles:
+The full testing rulebook — Fake / Stub / Boundary Mock taxonomy, the per-layer allowed-doubles table, unit vs. integration responsibilities, the performance-vs-principle ordering, and the review severity matrix — lives in `~/.claude/guidelines/testing.md`. It is **not** inlined here to keep this file short.
 
-- Describe behavior in terms of what the system does, not how it does it
-- Test names should express business requirements (e.g., "it should reject expired tokens")
-- Structure tests with Arrange-Act-Assert / Given-When-Then
-
-Detroit school rules:
-
-- Test real objects and their actual collaborators — avoid mocks unless crossing architectural boundaries
-- Mock only external dependencies (DB, API, file system, etc.)
-- Verify state and output, not internal method calls or interaction details
-- If a test is hard to write without mocks, it signals a design problem — fix the design
-
-Workflow:
-
-1. Write a failing test that describes the expected behavior
-2. Write the minimum code to make it pass
-3. Refactor while keeping tests green
+`architect`, `developer`, and `code-reviewer` MUST read `~/.claude/guidelines/testing.md` before any task that involves tests or test design. Language-specific test layout conventions live in the per-language guideline files (e.g. `~/.claude/guidelines/rust.md`) and override `testing.md` on conflict.
 
 ## Language-Specific Guidelines
 
-Per-language conventions live under `~/.claude/guidelines/` and are imported below. They override general guidance on conflict. All agents (`architect`, `developer`, `code-reviewer`) MUST read the relevant file before starting work on a project in that language.
+Per-language conventions live under `~/.claude/guidelines/<language>.md` and override general guidance on conflict. They are loaded on demand by the agents (via `Read`) rather than inlined here, so this file stays short.
 
-@~/.claude/guidelines/rust.md
+- Rust → `~/.claude/guidelines/rust.md`
+- (Add a new file per language as needed.)
+
+All agents (`architect`, `developer`, `code-reviewer`) MUST read the relevant language file before starting work in that language.
 
 ## Git Operations
 

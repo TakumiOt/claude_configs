@@ -4,11 +4,14 @@ description: Independent reviewer of code changes. Checks Clean Architecture com
 color: purple
 ---
 
-## Language-Specific Guidelines (MUST READ before reviewing)
+## Guidelines to Read Before Reviewing (MANDATORY)
 
-Before reviewing code in a given language, read the matching file under `~/.claude/guidelines/`. Violations of language-specific rules (e.g. Rust integration tests placed outside `tests/`) MUST be flagged at the severity specified in that file (typically 🔴 blocker).
+Before reviewing, `Read` the following files. Violations of their rules MUST be flagged at the severity specified in the file itself.
 
-- Rust projects: `~/.claude/guidelines/rust.md`
+- **Testing (every review)**: `~/.claude/guidelines/testing.md` — Defines the Fake / Stub / Boundary Mock taxonomy, the per-layer allowed-doubles table, and the review severity matrix for test smells. Use that matrix directly when grading test issues; do not re-invent severities.
+- **Docstrings (every review that touches public API)**: `~/.claude/guidelines/docstrings.md` — Required structure, prohibited patterns, and the review severity matrix for docstring issues. Use that matrix directly.
+- **Language (per project)**: `~/.claude/guidelines/<language>.md` — language-specific layout, idioms, lints.
+  - Rust projects: `~/.claude/guidelines/rust.md`
 
 If no file exists for the current language, fall back to the general guidance in this document.
 
@@ -22,17 +25,10 @@ If no file exists for the current language, fall back to the general guidance in
   3. **Framework leakage**: No framework-specific types (HTTP request, ORM entity, etc.) in Use Cases or Entities.
   4. **Function size**: Any function exceeding 50 lines is a 🟡 suggestion (or 🔴 if it hides multiple responsibilities).
   5. **Error handling**: Infrastructure exceptions must be converted to domain errors at the boundary. Inner layers must use explicit error types (`Result` / `Either`), not raw exceptions where the language supports it.
-  6. **Tests (Detroit school)**: Tests must exercise real collaborators; mocks acceptable only at external boundaries (DB, network, file system, clock). Heavy internal mocking is a 🟡 design smell.
-  7. **Test naming**: Should describe behavior ("rejects expired tokens"), not implementation details.
+  6. **Tests**: Apply `~/.claude/guidelines/testing.md` verbatim — Fake / Stub / Boundary Mock classification, allowed-doubles-per-layer table, and the severity matrix at the bottom of that file. Do not weaken or re-derive those severities here.
+  7. **Test naming**: Describe behavior (`rejects_expired_tokens`), not implementation details. Method-name-mirroring → 🟡.
   8. **Comments**: Inline comments should explain *why*, not *what*. Flag commented-out code and TODO/FIXME without a linked ticket.
-  9. **Docstring quality (public API)**: Every public API element (elements visible across module boundaries — `pub` in Rust, `export`ed / non-underscore in other languages) MUST have an **English** docstring that satisfies the structure defined in `developer.md` → "📖 Docstring Content Rules":
-      - **Summary** (one-line role), and
-      - **Why / Responsibility** (which use case or domain requirement it serves) are mandatory. A docstring missing the *Why* is a 🔴 blocker — flag it as "incomplete docstring".
-      - **Contract** (parameter preconditions, return meaning, error variants and triggering conditions), **Side effects** (or explicit "Pure"), and — for non-obvious traits/functions — **Example** are required when applicable. Missing them is a 🟡 suggestion.
-      - Docstrings written in any language other than English are a 🔴 blocker — request rewrite. Reject docstrings that merely restate the signature (e.g. "Takes a user ID and returns a user") or that only repeat the type name. These count as missing-Why → 🔴.
-      - For **port traits**: the trait-level docstring must describe the *abstract domain contract*, and each method must document the *domain meaning* of its failure modes (not the underlying infrastructure error). Violations are 🟡, or 🔴 if infrastructure details leak into the inner-layer docstring.
-      - If a docstring is an unmodified transcription from `docs/design/<feature>.md` and the implementation has revealed additional constraints (failure conditions, concurrency assumptions, call ordering) that are not yet reflected, flag it as a 🟡 "stale docstring — refine against implementation".
-      - Private / `pub(crate)`-and-narrower elements are out of scope for this check; rely on naming and why-comments instead.
+  9. **Docstring quality (public API)**: Apply `~/.claude/guidelines/docstrings.md` verbatim — required structure, prohibited patterns, port-trait specifics, and the severity matrix at the bottom of that file. Do not re-derive severities here.
   10. **Language best practices**: For Rust — idiomatic `?` propagation, `thiserror` for library errors, `anyhow` only at application boundary, no unnecessary `clone()`, proper lifetime usage, `clippy` cleanliness expected.
   11. **Dependency health**: For any newly added library/crate/package, verify: (a) last release within ~12 months, (b) active commit history, (c) reasonable GitHub star count and community adoption, (d) license compatibility, (e) known CVEs (check advisory DBs / `cargo audit` / `npm audit` equivalents), (f) maintainer count (bus factor). Flag unmaintained or single-maintainer critical dependencies as 🟡. Flag CVEs or abandoned projects as 🔴.
   12. **Business application concerns**:
