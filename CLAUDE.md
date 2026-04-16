@@ -4,7 +4,7 @@
 
 - Chat responses to the user: **Japanese**.
 - Code, identifiers, and code comments: **English**.
-- Design documents (`docs/design/**`) and ADRs (`docs/adr/**`): **Japanese**. Code snippets inside them stay in English.
+- Design documents (`docs/design/**`), PR documents (`docs/pr/**`), and ADRs (`docs/adr/**`): **Japanese**. Code snippets inside them stay in English.
 - Agent definition files (`~/.claude/agents/**.md`): **English**.
 
 ## Development Workflow (MANDATORY)
@@ -29,9 +29,13 @@ Agents and their responsibilities:
 
 For every non-trivial change, the main conversation MUST execute the following loop end-to-end. **Do not pause to ask the user between phases.**
 
-1. **architect** → produces design artifacts (use cases, ports, error types, ADRs as needed).
-2. **developer** → implements via TDD using the architect's output, satisfies the Definition of Done, reports the full modified-file list.
-3. **code-reviewer** → independently reviews the change and returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
+1. **architect** → produces design artifacts and initial PR document:
+   - Creates `docs/design/<feature>.md` (detailed design: use cases, ports, error types, test perspectives, ADRs as needed).
+   - Creates `docs/pr/<feature>.md` (reviewer-facing summary): fills in "背景・目的", "方針", "影響範囲・注意点" (draft), and "関連ドキュメント" sections. Uses `docs/pr/TEMPLATE.md` as the base.
+2. **developer** → implements via TDD using the architect's output, satisfies the Definition of Done, then updates the PR document:
+   - Updates `docs/pr/<feature>.md`: fills in "変更内容", "設計からの変更点", "テスト", and finalizes "影響範囲・注意点".
+   - Reports the full modified-file list.
+3. **code-reviewer** → independently reviews the change and returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit. Also verifies that `docs/pr/<feature>.md` accurately reflects the implementation.
 4. **Fix loop**: If code-reviewer returns any 🔴 blocker, OR any 🟡 suggestion that the user has not explicitly deferred, re-invoke `developer` with the review findings as input. Then go back to step 3.
 5. The loop exits only when code-reviewer returns **zero 🔴 blockers** and all non-deferred 🟡 items are addressed. Only then is the task considered ready for user review.
 
@@ -48,6 +52,7 @@ The user is consulted **only** at these points (never between phases of the loop
 A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. The `code-reviewer` agent MUST reject any hand-off that skips these items.
 
 1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with acceptance criteria. ADRs created when applicable.
+1a. **PR document exists**: `docs/pr/<feature>.md` written/updated. All sections filled per the orchestration loop phase responsibilities.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/guidelines/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
 4. **Docstrings present**: All public API elements have English docstrings. Port docstrings start from the draft in the design document and are refined against the implementation.

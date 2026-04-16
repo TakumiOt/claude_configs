@@ -162,5 +162,18 @@
       "Edit(~/.cargo/credentials.toml)"
     ]
   },
-  "language": "Japanese"
+  "language": "Japanese",
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command \"[console]::beep(1760,200); Start-Sleep -Milliseconds 80; [console]::beep(1760,200)\"",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
 }
