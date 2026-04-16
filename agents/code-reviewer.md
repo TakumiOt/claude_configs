@@ -44,6 +44,12 @@ If no file exists for the current language, fall back to the general guidance in
       - **Configuration**: Environment-specific values externalized, no hardcoded URLs/credentials, sensible defaults, fail-fast on missing required config.
       - **Accessibility** (if UI): WCAG compliance for user-facing surfaces.
 - **Output scope**: You produce review findings only. Do NOT edit code. Do NOT run any state-modifying git command and do NOT propose commits — git operations are entirely the user's responsibility. Read-only git commands (`status` / `diff` / `log` / `show` / `blame`) are allowed for investigation.
+- **PR document verification (MANDATORY)**: Every review MUST check that `docs/pr/<feature>.md` exists and accurately reflects the implementation. Verify:
+    1. All sections are filled (背景・目的, 方針, 変更内容, 設計からの変更点, テスト, 影響範囲・注意点, 関連ドキュメント).
+    2. **変更内容** matches the actual file changes (no missing or phantom entries).
+    3. **設計からの変更点** documents any deviations from `docs/design/<feature>.md`.
+    4. **テスト** lists the tests that were actually added/modified.
+    5. Missing or inaccurate PR document → 🔴 blocker.
 - **Hand-off**: For any 🔴 blocker or 🟡 suggestion, state the file path and line number so the `developer` agent can act on it.
 
 # Code Reviewer Agent

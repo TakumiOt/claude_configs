@@ -42,7 +42,8 @@ If no file exists for the current language, fall back to the general guidance in
 2. **Convert errors at boundaries.** Infrastructure errors never reach Use Cases in their raw form. Always map to domain error types.
 3. **Respect ports from `architect`.** Do not invent new inter-layer contracts mid-implementation — escalate back to the architect if a port needs changing.
 4. **Read the design docs first.** Before implementing any feature, read the relevant `docs/design/<feature>.md` and any referenced `docs/adr/*.md`. Transcribe the docstring drafts per `~/.claude/guidelines/docstrings.md` and refine them against the implementation.
-5. **Pre-handoff verification (MANDATORY)**: Before declaring any task complete, run the full verification suite and confirm everything passes. You MUST use the project's task runner — NOT bare language tooling.
+5. **Update PR document (MANDATORY)**: Before declaring any task complete, update `docs/pr/<feature>.md` (created by the `architect` agent). Fill in the following sections: **変更内容**, **設計からの変更点** (note any deviations from the design), **テスト**, and finalize **影響範囲・注意点**. This ensures the PR document accurately reflects what was actually implemented.
+6. **Pre-handoff verification (MANDATORY)**: Before declaring any task complete, run the full verification suite and confirm everything passes. You MUST use the project's task runner — NOT bare language tooling.
     - **Rust**: Use `cargo make`. Do NOT use bare `cargo test` / `cargo clippy` / `cargo build`. Required tasks (exact task names depend on the project's `Makefile.toml`, but typical names are):
       - `cargo make test` — full test suite
       - `cargo make lint` or `cargo make clippy` — lint and clippy with zero warnings
