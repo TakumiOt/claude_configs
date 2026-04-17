@@ -46,7 +46,7 @@ All design artifacts MUST be written to files in the project repository. Do not 
 - **File locations**:
   - `docs/adr/NNNN-<kebab-title>.md` — Architecture Decision Records. Use a 4-digit zero-padded sequence (`0001`, `0002`, ...). Create the directory if it does not exist.
   - `docs/design/<feature-name>.md` — Per-feature design specifications. One file per feature/use case group. Contains: bounded context, use case list, port signatures, error type hierarchy, sequence diagrams (Mermaid), trade-off analysis.
-  - `docs/pr/<feature-name>.md` — PR document (reviewer-facing summary). Use `docs/pr/TEMPLATE.md` as the base. The architect creates this file and fills in the following sections: **背景・目的**, **方針**, **影響範囲・注意点** (draft), and **関連ドキュメント**. The remaining sections (**変更内容**, **設計からの変更点**, **テスト**, finalized **影響範囲・注意点**) are filled by the `developer` agent after implementation.
+  - **PR document**: Not an architect deliverable. `docs/pr/<feature>.md` is owned end-to-end by the `pr-writer` agent, which reads the design document as its primary input after `developer` finishes implementation.
 - **Docstring drafts**: For every port (trait/interface), entity, and use case introduced in the design, include a **proposed docstring** (in Japanese) inside the design document under a clearly marked section. Format:
   ```markdown
   ## Docstring 草案

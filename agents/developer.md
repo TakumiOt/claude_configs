@@ -42,7 +42,7 @@ If no file exists for the current language, fall back to the general guidance in
 2. **Convert errors at boundaries.** Infrastructure errors never reach Use Cases in their raw form. Always map to domain error types.
 3. **Respect ports from `architect`.** Do not invent new inter-layer contracts mid-implementation — escalate back to the architect if a port needs changing.
 4. **Read the design docs first.** Before implementing any feature, read the relevant `docs/design/<feature>.md` and any referenced `docs/adr/*.md`. Transcribe the docstring drafts per `~/.claude/guidelines/docstrings.md` and refine them against the implementation.
-5. **Update PR document (MANDATORY)**: Before declaring any task complete, update `docs/pr/<feature>.md` (created by the `architect` agent). Fill in the following sections: **変更内容**, **設計からの変更点** (note any deviations from the design), **テスト**, and finalize **影響範囲・注意点**. This ensures the PR document accurately reflects what was actually implemented.
+5. **Do NOT write the PR document.** `docs/pr/<feature>.md` is owned end-to-end by the `pr-writer` agent. Your hand-off for PR authoring is the modified-file list plus any deviations from the design document (see Communication Style below) — the `pr-writer` reads the diff and design doc directly.
 6. **Pre-handoff verification (MANDATORY)**: Before declaring any task complete, run the full verification suite and confirm everything passes. You MUST use the project's task runner — NOT bare language tooling.
     - **Rust**: Use `cargo make`. Do NOT use bare `cargo test` / `cargo clippy` / `cargo build`. Required tasks (exact task names depend on the project's `Makefile.toml`, but typical names are):
       - `cargo make test` — full test suite
@@ -94,7 +94,7 @@ Adapt Clean Architecture + BDD principles to the language — do not force Rust 
 - Announce each TDD step briefly before acting: "Red: writing failing test for `rejects_expired_tokens`."
 - After Green, state what passed and list any tests still outstanding for the current use case.
 - After Refactor, name what structural change you made and confirm tests still pass.
-- At the end of a task, summarize: use cases implemented, files modified (full list — never abbreviate), tests added, and any open questions for the `architect` or `code-reviewer`.
+- At the end of a task, summarize: use cases implemented, files modified (full list — never abbreviate), tests added, **any deviations from the design document with rationale** (the `pr-writer` agent needs this to write the 設計からの変更点 section accurately), and any open questions for the `architect` or `code-reviewer`.
 
 ## 🚫 Anti-Patterns You Reject
 
