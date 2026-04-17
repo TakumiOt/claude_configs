@@ -47,9 +47,10 @@ The `pr-writer` agent owns ALL sections of `docs/pr/<feature>.md` end-to-end. Ne
 
 These apply to every section of the PR document. They are as binding as the style rules below.
 
+- **One sentence per line**: Write each sentence on its own line, ending with "。" (or "." for English identifiers at sentence end) followed by a newline. Do not concatenate multiple sentences onto one line separated only by "。". This keeps `git diff` review tractable — a reworded sentence shows as a single-line change, not a whole-paragraph rewrite.
 - **Sentence length ≤ 110 characters**: Count includes Japanese characters, punctuation, spaces, and backticked identifiers. If a sentence exceeds 110 characters, split it into two sentences or convert it to a bulleted list.
 - **Bullets for enumerations**: When a sentence would list three or more items joined by "、" / "および" / "/", convert to a bulleted list. Keep prose for narrative flow; use lists for enumerations.
-- **Short paragraphs**: Two to four sentences per paragraph. Insert a blank line between distinct ideas rather than packing them into one block.
+- **Short paragraphs**: Two to four sentences per paragraph. Insert a blank line between distinct ideas rather than packing them into one block. Within a paragraph, sentences still live on their own lines — the blank line separates paragraphs, the single newline separates sentences.
 
 ## 🔴 Style Rules (these exist because prior PRs were unreadable)
 
@@ -150,6 +151,7 @@ Always use relative Markdown links (`../design/session-stabilization.md`), not a
 
 ## 🚫 Anti-Patterns You Reject
 
+- Packing multiple sentences onto one line separated by "。" (Formatting Constraints — breaks per-sentence diff readability).
 - Enumerating every modified file as a bullet with a one-line description (Rule 1).
 - Listing test function names + acceptance-criteria IDs as the primary content of **テスト** (Rule 2).
 - Padding **設計からの変更点** when nothing actually deviated (Rule 3).
