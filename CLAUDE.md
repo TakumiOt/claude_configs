@@ -76,7 +76,7 @@ A development task is NOT complete until every item below is true. The `develope
 1a. **Slice plan approved**: The user has approved the slice list (names, scopes, dependencies, order) before any `developer` work began.
 1b. **PR documents exist per slice**: `docs/pr/<feature>-<slice>.md` exists for every slice. Scope / acceptance criteria / dependencies / diff budget filled by `architect`; prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) filled by `pr-writer` after implementation. Factual consistency with the implementation confirmed by `code-reviewer`.
 1c. **Slice diff budget respected**: Each slice's diff stays within the soft target (400 lines) or has an explicit rationale if between 400 and 600. Exceeding the 600-line hard limit (production + test lines, **docstring lines excluded**) is a 🟡 finding from `code-reviewer` that must be addressed or explicitly deferred by the user. The **single canonical counter** is `~/.claude/scripts/diff-budget.sh` (invoked with the project's base branch as argument, defaulting to `main`). Every agent that needs a diff-line count MUST invoke this script and report the `counted` / `verdict` values from its output — do not re-derive the count via `git diff | wc -l` or other ad-hoc methods, as those will disagree on generated-file and docstring exclusions.
-2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/guidelines/testing.md`).
+2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
 4. **Docstrings present**: All public API elements have English docstrings. Port docstrings start from the draft in the design document and are refined against the implementation.
 5. **Function size**: No function exceeds 50 lines.
@@ -126,8 +126,55 @@ Agent files (`~/.claude/agents/*.md`) contain the detailed per-layer rules — t
 
 Detailed rules live in external files so this document stays short. All agents (`architect`, `developer`, `pr-writer`, `code-reviewer`) MUST `Read` the relevant files before starting work. Language-specific files override general guidance on conflict.
 
-- **Testing** (every task): `~/.claude/guidelines/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
-- **Docstrings** (tasks touching public API): `~/.claude/guidelines/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
-- **Language** (per project): `~/.claude/guidelines/<language>.md` — test layout, task runner, error idioms.
-  - Rust → `~/.claude/guidelines/rust.md`
+- **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
+- **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
+- **Language** (per project): `~/.claude/rules/<language>.md` — test layout, task runner, error idioms.
+  - Rust → `~/.claude/rules/rust.md`
   - (Add a new file per language as needed.)
+
+## Rules Directory Governance (`~/.claude/rules/`)
+
+The `~/.claude/rules/` directory is the Claude Code–native user-level rules store (see the official Memory docs). The governance below keeps it useful without exploding every session's context budget.
+
+### 1. File size + `paths:` discipline (context hygiene)
+
+- **Soft target**: ≤ 200 lines per rule file.
+- **Hard ceiling**: ≤ 400 lines per rule file.
+- Any rule file exceeding 400 lines MUST declare a `paths:` frontmatter so it does not auto-load into every session. Unconditional (no `paths:`) rules must stay small.
+- When a rule approaches 400 lines, it is almost always a sign the scope is too broad — split it (e.g., extract a language-specific sub-rule) before raising the ceiling.
+
+### 2. Boundary between `CLAUDE.md`, `rules/`, and `agents/`
+
+Each file has exactly one responsibility; content MUST NOT drift across boundaries.
+
+- **`CLAUDE.md`** — Top-level orchestration only: who runs in which phase, Definition of Done, mandatory workflows. Target ≤ 300 lines. Detailed principles are NOT inlined here; they live in `rules/`.
+- **`rules/`** — Principles: what constitutes correct design / implementation / testing / documentation. Does NOT describe workflow or role responsibilities.
+- **`agents/`** — Roles: what each agent reads, produces, and hands off. Each agent links to the `rules/` files it depends on, rather than re-stating them.
+
+When updating any of the three, verify the change belongs to that file's responsibility. Workflow content slipping into `rules/`, or detailed principles slipping into `agents/`, is drift to be corrected.
+
+### 3. Severity matrix placement
+
+Every rule file that `code-reviewer` consults for grading (currently `testing.md`, `docstrings.md`, `architecture.md`) MUST expose its severity matrix at the **bottom of the file under a `## Severity Matrix` heading** (consistent name and location). `code-reviewer` relies on a predictable anchor — do not scatter severity rules mid-document.
+
+### 4. Conflict resolution between overlapping rules
+
+When two rule files address the same concern, state the precedence explicitly in the affected files' opening matter. The convention is **more-specific wins**:
+
+- Language-specific rule > general architecture rule (Rust newtype mechanics in `rust.md` win over generic port-placement wording in `architecture.md`).
+- Review-severity matrix in a topic file (e.g., `testing.md`) > generic severity mapping in `architecture.md`.
+- Document the winner at the top of the more-specific rule file, so readers do not have to guess.
+
+### 5. Rule-change checklist (prevents stale references)
+
+When adding, renaming, splitting, or retiring a rule file, perform all of the following before declaring the change done:
+
+1. `grep -r '<old-rule-path>' ~/.claude` — update every reference in `CLAUDE.md`, `agents/**/*.md`, other rules files, `.gitignore`, and `scripts/**`.
+2. Verify the `paths:` frontmatter still reflects when the rule is relevant (not narrower, not broader).
+3. Check that `CLAUDE.md`'s "Guidelines to Read" section lists current rule files accurately.
+4. If the rule had a Severity Matrix, confirm the matrix is preserved (or explicitly removed with rationale) after the change.
+5. Confirm the file size is within the ceilings from §1; split if not.
+
+### 6. Language
+
+Rule files are written in **English** (matching `~/.claude/agents/*.md`). Code identifiers and snippets stay in their native language. The user chat remains Japanese per the global Language Policy above.
