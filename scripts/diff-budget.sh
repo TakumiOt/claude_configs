@@ -6,7 +6,8 @@
 # agents so every agent reports the same number. Defined in ~/.claude/CLAUDE.md.
 #
 # Counts added + deleted lines of production + test code between the merge base
-# of <base-ref> and the current working tree (committed + uncommitted), excluding:
+# of <base-ref> and the current working tree (committed + staged + unstaged +
+# untracked), excluding:
 #   - Generated files and lockfiles (default pathspec list; extend via
 #     DIFF_BUDGET_EXTRA_EXCLUDE='path1:path2:...')
 #   - Documentation under docs/ (design / PR / ADR documents are not
@@ -55,21 +56,21 @@ HARD_BUDGET="${HARD_BUDGET:-600}"
 
 EXCLUDE_PATHSPEC=(
   ':!docs/**'
-  ':!Cargo.lock'
-  ':!package-lock.json'
-  ':!pnpm-lock.yaml'
-  ':!yarn.lock'
-  ':!poetry.lock'
-  ':!uv.lock'
-  ':!Gemfile.lock'
-  ':!go.sum'
-  ':!composer.lock'
-  ':!target/**'
-  ':!node_modules/**'
-  ':!dist/**'
-  ':!build/**'
-  ':!.venv/**'
-  ':!venv/**'
+  ':!**/Cargo.lock'
+  ':!**/package-lock.json'
+  ':!**/pnpm-lock.yaml'
+  ':!**/yarn.lock'
+  ':!**/poetry.lock'
+  ':!**/uv.lock'
+  ':!**/Gemfile.lock'
+  ':!**/go.sum'
+  ':!**/composer.lock'
+  ':!**/target/**'
+  ':!**/node_modules/**'
+  ':!**/dist/**'
+  ':!**/build/**'
+  ':!**/.venv/**'
+  ':!**/venv/**'
   ':!**/*.generated.*'
   ':!**/*.pb.go'
   ':!**/*_pb2.py'
@@ -99,23 +100,23 @@ if [ -z "$MERGE_BASE" ]; then
   exit 3
 fi
 
-# Total raw: all changed lines between merge-base and working tree,
-# no exclusions. Reported for transparency.
-total_raw=$(
+# ---------------------------------------------------------------------------
+# Tracked changes (committed + staged + unstaged). `git diff <commit>` sees
+# these without requiring `git add`, but untracked files are invisible to it —
+# they are handled in the second block below.
+# ---------------------------------------------------------------------------
+
+tracked_total_raw=$(
   git diff --numstat "$MERGE_BASE" \
     | awk '{added+=$1; deleted+=$2} END {print added+deleted+0}'
 )
 
-# After generated/lockfile exclusion.
-total_filtered=$(
+tracked_total_filtered=$(
   git diff --numstat "$MERGE_BASE" -- "${EXCLUDE_PATHSPEC[@]}" \
     | awk '{added+=$1; deleted+=$2} END {print added+deleted+0}'
 )
 
-generated_excluded=$((total_raw - total_filtered))
-
-# Docstring-only lines within the filtered diff.
-docstring_excluded=$(
+tracked_docstring_excluded=$(
   git diff "$MERGE_BASE" -- "${EXCLUDE_PATHSPEC[@]}" \
     | awk '
         /^diff --git / {
@@ -140,6 +141,55 @@ docstring_excluded=$(
         END { print count+0 }
       '
 )
+
+# ---------------------------------------------------------------------------
+# Untracked changes (newly created files not yet `git add`ed). Count the
+# entire file contents as "added" lines — this mirrors how they will be
+# counted once staged.
+# ---------------------------------------------------------------------------
+
+count_file_docstrings() {
+  local f="$1"
+  case "$f" in
+    *.rs)
+      awk '/^[[:space:]]*(\/\/\/|\/\/!)/ { c++ } END { print c+0 }' "$f"
+      ;;
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs)
+      awk '/^[[:space:]]*(\/\*\*|\*\/|\*([[:space:]]|$))/ { c++ } END { print c+0 }' "$f"
+      ;;
+    *.py)
+      awk '/^[[:space:]]*("""|'\''\'\''\'\'')/ { c++ } END { print c+0 }' "$f"
+      ;;
+    *)
+      echo 0
+      ;;
+  esac
+}
+
+untracked_total_raw=0
+while IFS= read -r -d '' f; do
+  [ -z "$f" ] && continue
+  [ ! -f "$f" ] && continue
+  untracked_total_raw=$((untracked_total_raw + $(wc -l < "$f")))
+done < <(git ls-files --others --exclude-standard -z)
+
+untracked_total_filtered=0
+untracked_docstring_excluded=0
+while IFS= read -r -d '' f; do
+  [ -z "$f" ] && continue
+  [ ! -f "$f" ] && continue
+  untracked_total_filtered=$((untracked_total_filtered + $(wc -l < "$f")))
+  untracked_docstring_excluded=$((untracked_docstring_excluded + $(count_file_docstrings "$f")))
+done < <(git ls-files --others --exclude-standard -z -- "${EXCLUDE_PATHSPEC[@]}")
+
+# ---------------------------------------------------------------------------
+# Combine tracked + untracked.
+# ---------------------------------------------------------------------------
+
+total_raw=$((tracked_total_raw + untracked_total_raw))
+total_filtered=$((tracked_total_filtered + untracked_total_filtered))
+generated_excluded=$((total_raw - total_filtered))
+docstring_excluded=$((tracked_docstring_excluded + untracked_docstring_excluded))
 
 counted=$((total_filtered - docstring_excluded))
 if [ "$counted" -lt 0 ]; then
