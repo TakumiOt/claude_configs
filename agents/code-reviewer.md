@@ -8,11 +8,11 @@ color: purple
 
 Before reviewing, `Read` the following files. Violations of their rules MUST be flagged at the severity specified in the file itself.
 
-- **Architecture (every review)**: `~/.claude/guidelines/architecture.md` — Authoritative source for layer responsibilities, interface placement (Repository in Entity / Gateway in Use Case / QueryService in Use Case), per-layer review checklists ("Per-Layer Review Observations"), DI patterns, and the Axum boundary rules. The **"Severity Mapping"** section defines how Critical / Major / Minor map to 🔴 / 🟡 / 💭 for architecture-level findings — use it directly; do not re-derive severities here.
-- **Testing (every review)**: `~/.claude/guidelines/testing.md` — Defines the Fake / Stub / Boundary Mock taxonomy, the per-layer allowed-doubles table, and the review severity matrix for test smells. Use that matrix directly when grading test issues; do not re-invent severities.
-- **Docstrings (every review that touches public API)**: `~/.claude/guidelines/docstrings.md` — Required structure, prohibited patterns, and the review severity matrix for docstring issues. Use that matrix directly.
-- **Language (per project)**: `~/.claude/guidelines/<language>.md` — language-specific layout, idioms, lints.
-  - Rust projects: `~/.claude/guidelines/rust.md`
+- **Architecture (every review)**: `~/.claude/rules/architecture.md` — Authoritative source for layer responsibilities, interface placement (Repository in Entity / Gateway in Use Case / QueryService in Use Case), per-layer review checklists ("Per-Layer Review Observations"), DI patterns, and the Axum boundary rules. The **"Severity Mapping"** section defines how Critical / Major / Minor map to 🔴 / 🟡 / 💭 for architecture-level findings — use it directly; do not re-derive severities here.
+- **Testing (every review)**: `~/.claude/rules/testing.md` — Defines the Fake / Stub / Boundary Mock taxonomy, the per-layer allowed-doubles table, and the review severity matrix for test smells. Use that matrix directly when grading test issues; do not re-invent severities.
+- **Docstrings (every review that touches public API)**: `~/.claude/rules/docstrings.md` — Required structure, prohibited patterns, and the review severity matrix for docstring issues. Use that matrix directly.
+- **Language (per project)**: `~/.claude/rules/<language>.md` — language-specific layout, idioms, lints.
+  - Rust projects: `~/.claude/rules/rust.md`
 
 When severity matrices from multiple guideline files address the same observation, the more specific document wins (testing matrix > docstring matrix > `rust.md` > `architecture.md` > general guidance in this file).
 
@@ -33,10 +33,10 @@ If no file exists for the current language, fall back to the general guidance in
       - `verdict=hard_exceeded` (> 600): 🟡 blocker-adjacent finding — flag and propose how the slice could have been split. Route to `developer` (and by extension `architect` if the slice plan itself was wrong). The user may explicitly defer to accept an oversized slice; an undeferred breach must be addressed before the loop exits.
       - If the slice mixes scope beyond what the skeleton declared (unrelated changes bundled in), flag as 🟡 regardless of line count.
   5. **Error handling**: Infrastructure exceptions must be converted to domain errors at the boundary. Inner layers must use explicit error types (`Result` / `Either`), not raw exceptions where the language supports it. Layered error separation (`DomainError` in Entities, `UseCaseError` wrapping it in Use Cases, HTTP conversion in the adapter layer) is required per `architecture.md`; monolithic error types that span layers are 🟡.
-  6. **Tests**: Apply `~/.claude/guidelines/testing.md` verbatim — Fake / Stub / Boundary Mock classification, allowed-doubles-per-layer table, and the severity matrix at the bottom of that file. Do not weaken or re-derive those severities here.
+  6. **Tests**: Apply `~/.claude/rules/testing.md` verbatim — Fake / Stub / Boundary Mock classification, allowed-doubles-per-layer table, and the severity matrix at the bottom of that file. Do not weaken or re-derive those severities here.
   7. **Test naming**: Describe behavior (`rejects_expired_tokens`), not implementation details. Method-name-mirroring → 🟡.
   8. **Comments**: Inline comments should explain *why*, not *what*. Flag commented-out code and TODO/FIXME without a linked ticket.
-  9. **Docstring quality (public API)**: Apply `~/.claude/guidelines/docstrings.md` verbatim — required structure, prohibited patterns, port-trait specifics, and the severity matrix at the bottom of that file. Do not re-derive severities here.
+  9. **Docstring quality (public API)**: Apply `~/.claude/rules/docstrings.md` verbatim — required structure, prohibited patterns, port-trait specifics, and the severity matrix at the bottom of that file. Do not re-derive severities here.
   10. **Language best practices**: For Rust — idiomatic `?` propagation, `thiserror` for library errors, `anyhow` only at application boundary, no unnecessary `clone()`, proper lifetime usage, `clippy` cleanliness expected.
   10a. **Layer-responsibility smells (per `architecture.md`)**:
       - Business logic (if-branches on domain conditions, calculations) written inside a Use Case instead of an Entity → 🟡 or 🔴 per the Major-tier mapping in `architecture.md`.
