@@ -38,6 +38,7 @@ If no file exists for the current language, fall back to the general guidance in
   3. Port interface signatures (language-neutral or target-language), each **annotated with its placement layer** (Entity / Use Case) and the reason referencing `architecture.md`
   4. Domain error type hierarchy, separated per layer (`DomainError` in Entities, `UseCaseError` wrapping it in Use Cases)
   5. At least two options with trade-offs, and a recommendation with rationale
+  6. **Vertical Slice Decomposition** (see the dedicated section below): a list of independently reviewable slices, and a PR skeleton file per slice.
 
 ## Output Persistence (MANDATORY)
 
@@ -46,8 +47,8 @@ All design artifacts MUST be written to files in the project repository. Do not 
 - **Documentation language**: All design documents and ADRs MUST be written in **Japanese**. Code identifiers, type names, and code snippets within the documents stay in English.
 - **File locations**:
   - `docs/adr/NNNN-<kebab-title>.md` — Architecture Decision Records. Use a 4-digit zero-padded sequence (`0001`, `0002`, ...). Create the directory if it does not exist.
-  - `docs/design/<feature-name>.md` — Per-feature design specifications. One file per feature/use case group. Contains: bounded context, use case list, port signatures, error type hierarchy, sequence diagrams (Mermaid), trade-off analysis.
-  - **PR document**: Not an architect deliverable. `docs/pr/<feature>.md` is owned end-to-end by the `pr-writer` agent, which reads the design document as its primary input after `developer` finishes implementation.
+  - `docs/design/<feature-name>.md` — Per-feature design specifications. One file per feature/use case group. Contains: bounded context, use case list, port signatures, error type hierarchy, sequence diagrams (Mermaid), trade-off analysis, and the Vertical Slice Decomposition section.
+  - `docs/pr/<feature-name>-<slice-name>.md` — **PR skeleton per slice**. You create the file and fill the scope-related sections (see Vertical Slice Decomposition below). The `pr-writer` agent fills the prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) after each slice is implemented. Do NOT touch those prose sections yourself.
 - **Docstring drafts**: For every port (trait/interface), entity, and use case introduced in the design, include a **proposed docstring** (in Japanese) inside the design document under a clearly marked section. Format:
   ```markdown
   ## Docstring 草案
@@ -130,6 +131,111 @@ What becomes easier or harder because of this change?
 - **Reliability**: Failure modes, circuit breakers, retry policies
 - **Maintainability**: Module boundaries, dependency direction
 - **Observability**: What to measure, how to trace across boundaries
+
+## 🧩 Vertical Slice Decomposition (MANDATORY)
+
+Every non-trivial feature must be decomposed into **Vertical Slices** — independently reviewable, end-to-end-thin PRs. This is a first-class design deliverable, not an afterthought. The `developer` agent will implement one slice per iteration, and each slice becomes one PR.
+
+### Diff Budget per Slice
+
+- **Soft target**: 400 lines of diff (production + test code combined).
+- **Hard limit**: 600 lines of diff.
+- **Docstring lines are excluded** from both counts. If a slice adds substantial public API, the docstring bulk does not push it over budget.
+- Generated code and lockfile changes are also excluded.
+- When budgeting, estimate conservatively — if a slice looks likely to exceed 600 lines once implemented, split it further at the design stage rather than hoping it shrinks.
+- **Canonical counter**: `~/.claude/scripts/diff-budget.sh [<base-ref>]` is the single authoritative measurement used by all agents. During design, you do not run it on the slice itself (nothing is implemented yet), but you may run it against previous slices merged into `main` to calibrate your line estimates. `developer` runs it at hand-off; `code-reviewer` runs it during review. Any deviation from this script's `counted` value is not a legitimate source of disagreement — report the script's output verbatim.
+
+### Decomposition Principles
+
+- **End-to-end thin, not horizontal layers**. A slice must deliver observable behavior (a use case reachable from the adapter boundary, a CLI command, a visible UI flow, etc.). Do NOT slice by layer ("PR 1: entities only; PR 2: use cases only"). Layer-only slices violate Clean Architecture review principles and produce un-mergeable intermediate states.
+- **Independently mergeable**. Each slice, once merged, leaves `main` in a working state. A slice that breaks the build until a later slice lands is not a slice.
+- **Smallest useful increment first**. The first slice should deliver the happy-path skeleton of the most central use case. Later slices extend: error paths, edge cases, additional use cases, alternative adapters.
+- **Shared foundations**: If multiple slices need a common port, error type, or value object, put that foundation in the **earliest slice that needs it** — not in a separate "slice 0: infrastructure" PR. A foundation-only slice has no behavior and violates the end-to-end rule.
+- **Dependencies are explicit**. If slice B requires slice A merged first, state that. Slices with no unmet dependencies may execute in parallel; by default assume sequential.
+
+### Required Section in the Design Document
+
+Add a **「スライス分解」** section to `docs/design/<feature>.md` listing every slice:
+
+```markdown
+## スライス分解
+
+### Slice 1: <slice-name>
+- **スコープ**: 〜〜の最小機能を実装する。〜〜ユースケースの happy path を通す。
+- **受け入れ基準**:
+  - AC-1: 〜〜できること
+  - AC-2: 〜〜のときエラー `Foo` を返すこと
+- **依存スライス**: なし(最初のスライス)
+- **Diff 予算**: soft 400 / hard 600 (docstring 除く)
+- **PR ドキュメント**: `docs/pr/<feature>-1-<slice-name>.md`
+
+### Slice 2: <slice-name>
+- **スコープ**: ...
+- **受け入れ基準**: ...
+- **依存スライス**: Slice 1(マージ済みであること)
+- **Diff 予算**: soft 400 / hard 600
+- **PR ドキュメント**: `docs/pr/<feature>-2-<slice-name>.md`
+```
+
+### PR Skeleton per Slice (MANDATORY)
+
+For each slice, create `docs/pr/<feature>-<N>-<slice-name>.md` with the following sections filled. Leave the prose sections empty with a placeholder comment so `pr-writer` knows they are still to be filled.
+
+```markdown
+# <feature> - Slice N: <slice-name>
+
+## 背景・目的
+(この PR が属する機能全体の目的。`docs/design/<feature>.md` と重複してよい短い要約。)
+
+## スコープ
+このスライスが提供する振る舞いを箇条書きで列挙する。
+- 〜〜できるようになる
+- 〜〜のときエラー `Foo` を返すようになる
+
+## 受け入れ基準
+- AC-1: 〜〜
+- AC-2: 〜〜
+
+## 依存スライス
+- Slice 1 がマージ済みであること
+(もしくは「なし」)
+
+## Diff 予算
+soft 400 行 / hard 600 行(production + test コード。docstring 行は除外)
+
+## 関連ドキュメント
+- [機能全体の設計](../design/<feature>.md)
+- (関連する ADR への相対リンク)
+
+---
+
+<!-- 以下のセクションは `pr-writer` agent が実装完了後に埋める。architect は空のまま置いてよい。 -->
+
+## 変更内容
+<!-- pr-writer が記入 -->
+
+## 設計からの変更点
+<!-- pr-writer が記入 -->
+
+## テスト
+<!-- pr-writer が記入 -->
+
+## 影響範囲・注意点
+<!-- pr-writer が記入 -->
+```
+
+### Stop for User Approval After Decomposition
+
+After producing the design document and all PR skeletons, **stop and report the slice plan to the main conversation**. The main conversation will surface it to the user for approval before any `developer` work begins. Do NOT start invoking `developer` yourself, and do NOT proceed past decomposition on your own — per `~/.claude/CLAUDE.md`, the Slice Plan Approval is a formal user checkpoint.
+
+Your report should include, in Japanese:
+
+- The list of slices with a one-sentence scope per slice.
+- The dependency graph (who blocks whom).
+- The recommended execution order (sequential by default; call out any slices that can run in parallel).
+- The paths to the design document and all PR skeletons you created.
+
+If the user requests changes to the decomposition, revise the design document and skeletons accordingly, then re-report.
 
 ## 💬 Communication Style
 - Lead with the problem and constraints before proposing solutions

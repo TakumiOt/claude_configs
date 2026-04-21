@@ -21,46 +21,61 @@ When in doubt, delegate.
 
 Agents and their responsibilities:
 
-1. **architect** — Design phase. Produces use cases, port interfaces, domain error types, ADRs, and trade-off analyses. Does NOT write implementation code or the PR document.
-2. **developer** — Implementation phase. Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Does NOT write the PR document.
-3. **pr-writer** — PR authoring phase. Owns `docs/pr/<feature>.md` end-to-end. Writes feature-level prose summaries grounded in the design document and the diff — no file-by-file enumeration, no test-function-name lists.
-4. **code-reviewer** — Review phase. Independently reviews code changes for architecture compliance, dependency health, and business application concerns, and fact-checks the PR document against the implementation. Does NOT modify code or rewrite the PR document.
+1. **architect** — Design phase. Produces the feature-wide design document, decomposes the feature into **Vertical Slices**, and creates a PR skeleton per slice (scope, acceptance criteria, dependencies, diff budget). Does NOT write implementation code or the PR prose sections.
+2. **developer** — Implementation phase. Implements **one slice at a time**, scoped to the current PR skeleton's acceptance criteria. Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Does NOT write the PR prose sections.
+3. **pr-writer** — PR authoring phase. Fills the **prose sections** (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) of the current slice's PR skeleton, which already has scope and acceptance criteria filled in by `architect`. Writes feature-level prose summaries grounded in the design document and the diff — no file-by-file enumeration, no test-function-name lists.
+4. **code-reviewer** — Review phase. Independently reviews the current slice's code changes for architecture compliance, dependency health, slice-size compliance, and business application concerns, and fact-checks the slice's PR document against the implementation. Does NOT modify code or rewrite the PR document.
+
+### Vertical Slice Decomposition (MANDATORY)
+
+Large changes must be broken down by `architect` into **Vertical Slices** — independently reviewable, end-to-end-thin PRs. Each slice:
+
+- Has its own `docs/pr/<feature>-<slice>.md` skeleton, authored by `architect` during the design phase.
+- Has a **Diff budget**: soft target **400 lines**, hard limit **600 lines** of production + test code (**docstring lines are excluded** from the count).
+- Declares **dependencies** on other slices (which slices must be merged first). Slices with no unmet dependencies may execute in parallel; by default assume sequential.
+- Is scoped so the `developer` implements only what that skeleton describes — not the rest of the feature.
 
 ### Orchestration Loop (MANDATORY)
 
-For every non-trivial change, the main conversation MUST execute the following loop end-to-end. **Do not pause to ask the user between phases.**
+For every non-trivial change, the main conversation MUST execute the following loop end-to-end. Except for the **Slice Plan Approval** checkpoint below, do not pause to ask the user between phases.
 
 1. **architect** → produces design artifacts:
-   - Creates `docs/design/<feature>.md` (detailed design: use cases, ports, error types, test perspectives, ADRs as needed).
-   - Does NOT touch `docs/pr/<feature>.md` — that is the `pr-writer`'s responsibility after implementation.
-2. **developer** → implements via TDD using the architect's output and satisfies the Definition of Done.
-   - Reports the full modified-file list AND any deviations from the design document with rationale (input for `pr-writer`).
-   - Does NOT touch `docs/pr/<feature>.md`.
-3. **pr-writer** → authors `docs/pr/<feature>.md` from scratch:
-   - Reads the design document, the modified-file list, and the diff.
-   - Fills every section per its own style rules (feature-level prose for 変更内容, test perspectives in prose for テスト, etc.).
-   - Reports the file written and any mismatches between design and implementation it surfaced during self-check.
-4. **code-reviewer** → independently reviews the change and the PR document, returning findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit. Each finding is routed to either `developer` (code/tests/docstrings/dependencies) or `pr-writer` (PR document factual consistency). The reviewer does NOT grade PR prose style — that is `pr-writer`'s domain.
-5. **Fix loop**: If code-reviewer returns any 🔴 blocker, OR any 🟡 suggestion that the user has not explicitly deferred:
-   - Route code-side findings to `developer`. If code changes occur, re-invoke `pr-writer` after `developer` finishes so the PR document stays in sync.
-   - Route PR-document-side findings to `pr-writer`.
-   - Then go back to step 4.
-6. The loop exits only when code-reviewer returns **zero 🔴 blockers** and all non-deferred 🟡 items are addressed. Only then is the task considered ready for user review.
+   - Creates `docs/design/<feature>.md` (feature-wide: use cases, ports, error types, test perspectives, ADRs as needed).
+   - Decomposes the feature into Vertical Slices per the rules above.
+   - Creates one `docs/pr/<feature>-<slice>.md` skeleton per slice, with scope, acceptance criteria, dependencies, and diff budget filled in.
+   - Does NOT fill the prose sections of the PR skeletons — that is the `pr-writer`'s responsibility after each slice is implemented.
+2. **Slice Plan Approval (user checkpoint)** → the main conversation reports the slice list to the user (slice names, scope summaries, dependencies, order) and waits for explicit approval before proceeding. Revise per feedback and re-confirm if the user requests changes.
+3. **Per-slice loop** — for each approved slice, in dependency order (or in parallel when dependencies allow):
+   1. **developer** → implements the current slice via TDD. Reads `docs/design/<feature>.md` (whole-feature context) AND the current slice's PR skeleton (the implementation scope). Implements only what the skeleton's scope + acceptance criteria require. Satisfies the Definition of Done. Reports the full modified-file list AND any deviations from the design document with rationale (input for `pr-writer`). Does NOT touch any PR document.
+   2. **pr-writer** → fills the prose sections of the current slice's `docs/pr/<feature>-<slice>.md`:
+      - Reads the design document, the slice's PR skeleton (already filled with scope / acceptance criteria by `architect`), the modified-file list, and the diff.
+      - Fills 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点 per its own style rules. Does NOT rewrite scope / acceptance criteria / dependencies — those are `architect`-owned.
+      - Reports the file path and any mismatches between design and implementation surfaced during self-check.
+   3. **code-reviewer** → independently reviews the slice's code and PR document, returning findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit. Each finding is routed to either `developer` (code/tests/docstrings/dependencies/slice-size) or `pr-writer` (PR document factual consistency). The reviewer does NOT grade PR prose style — that is `pr-writer`'s domain.
+   4. **Fix loop**: If code-reviewer returns any 🔴 blocker, OR any 🟡 suggestion that the user has not explicitly deferred:
+      - Route code-side findings to `developer`. If code changes occur, re-invoke `pr-writer` after `developer` finishes so the PR document stays in sync.
+      - Route PR-document-side findings to `pr-writer`.
+      - Then re-run step 3.3.
+   5. The per-slice loop exits only when code-reviewer returns **zero 🔴 blockers** and all non-deferred 🟡 items are addressed. The slice is then ready for the user to review and merge.
+4. The overall task is complete when every slice has exited its per-slice loop. The user handles all git / merge operations between slices.
 
-When invoking the next agent in the loop, always pass the previous agent's output (design artifacts, modified file list, PR document path, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
+When invoking the next agent, always pass the previous agent's output (design artifacts, slice skeleton path, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
 
 The user is consulted **only** at these points (never between phases of the loop itself):
 
+- **Slice Plan Approval** (step 2 of the Orchestration Loop).
 - **Dependency approval** (per the Dependency Approval Process below).
 - **Ambiguous requirements** that the architect cannot resolve from the available context.
-- **Non-convergence escalation**: if the loop has executed step 4 → step 5 → step 4 three times without converging, stop and escalate to the user with a summary of what is blocking convergence.
+- **Non-convergence escalation**: if the per-slice loop has executed step 3.3 → step 3.4 → step 3.3 three times without converging, stop and escalate to the user with a summary of what is blocking convergence.
 
 ## Definition of Done (ALL items MUST be satisfied)
 
 A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. The `code-reviewer` agent MUST reject any hand-off that skips these items.
 
-1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with acceptance criteria. ADRs created when applicable.
-1a. **PR document exists**: `docs/pr/<feature>.md` written/updated by the `pr-writer` agent. All sections filled per `pr-writer`'s style rules (feature-level prose, not file lists; test perspectives, not function-name lists). Factual consistency with the implementation confirmed by `code-reviewer`.
+1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with acceptance criteria and a Vertical Slice Decomposition (one slice per PR). ADRs created when applicable.
+1a. **Slice plan approved**: The user has approved the slice list (names, scopes, dependencies, order) before any `developer` work began.
+1b. **PR documents exist per slice**: `docs/pr/<feature>-<slice>.md` exists for every slice. Scope / acceptance criteria / dependencies / diff budget filled by `architect`; prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) filled by `pr-writer` after implementation. Factual consistency with the implementation confirmed by `code-reviewer`.
+1c. **Slice diff budget respected**: Each slice's diff stays within the soft target (400 lines) or has an explicit rationale if between 400 and 600. Exceeding the 600-line hard limit (production + test lines, **docstring lines excluded**) is a 🟡 finding from `code-reviewer` that must be addressed or explicitly deferred by the user. The **single canonical counter** is `~/.claude/scripts/diff-budget.sh` (invoked with the project's base branch as argument, defaulting to `main`). Every agent that needs a diff-line count MUST invoke this script and report the `counted` / `verdict` values from its output — do not re-derive the count via `git diff | wc -l` or other ad-hoc methods, as those will disagree on generated-file and docstring exclusions.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/guidelines/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
 4. **Docstrings present**: All public API elements have English docstrings. Port docstrings start from the draft in the design document and are refined against the implementation.
