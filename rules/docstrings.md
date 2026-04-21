@@ -1,6 +1,11 @@
+---
+paths:
+  - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
+---
+
 # Docstring Guidelines
 
-Authoritative rules for docstrings on public API elements. Loaded on demand by the `developer` (when writing) and `code-reviewer` (when reviewing) agents.
+Authoritative rules for docstrings on public API elements. Auto-load when Claude touches source files matching the `paths:` above, and also loaded on demand by the `developer` (when writing) and `code-reviewer` (when reviewing) agents via `Read`.
 
 ## Scope
 

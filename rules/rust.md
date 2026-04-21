@@ -1,6 +1,13 @@
+---
+paths:
+  - "**/*.rs"
+  - "**/Cargo.toml"
+  - "**/Makefile.toml"
+---
+
 # Rust Language Guidelines
 
-These rules apply to all Rust projects and are shared across `architect`, `developer`, and `code-reviewer` agents. They override general guidance on conflict.
+These rules apply to all Rust projects and are shared across `architect`, `developer`, and `code-reviewer` agents. They auto-load when Claude touches Rust source or Cargo / Makefile.toml files. They override general guidance on conflict.
 
 ## Crate Structure for Binary Projects
 

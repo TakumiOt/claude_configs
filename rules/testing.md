@@ -1,6 +1,17 @@
+---
+paths:
+  - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
+  - "tests/**"
+  - "test/**"
+  - "**/*_test.{rs,py,ts,go}"
+  - "**/test_*.py"
+  - "**/*.test.{ts,tsx,js,jsx}"
+  - "**/*.spec.{ts,tsx,js,jsx}"
+---
+
 # Testing Guidelines
 
-These rules apply to all projects regardless of language. They are loaded on demand by the `architect`, `developer`, and `code-reviewer` agents (via `Read`) rather than being inlined into the global `CLAUDE.md`, so they stay authoritative without bloating every conversation.
+These rules apply to all projects regardless of language. They auto-load when Claude touches source or test files matching the `paths:` above, and are also loaded on demand by the `architect`, `developer`, and `code-reviewer` agents via `Read`.
 
 Follow **BDD (Behavior-Driven Development)** with the **Detroit school (classicist)** approach. The core rule of Detroit school is: **use real objects for any module you own, and reserve mocks for collaborators that lie outside your control**. Apply this rule consistently across every test layer.
 

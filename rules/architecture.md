@@ -1,8 +1,16 @@
+---
+paths:
+  - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
+  - "docs/design/**"
+  - "docs/pr/**"
+  - "docs/adr/**"
+---
+
 # Clean Architecture Review Guidelines
 
-Authoritative rules for applying Clean Architecture to Rust Web API projects. Loaded by `architect`, `developer`, and `code-reviewer` via `Read`.
+Authoritative rules for applying Clean Architecture to Rust Web API projects. Auto-load when Claude touches source files or design / PR / ADR docs matching the `paths:` above, and also loaded by `architect`, `developer`, and `code-reviewer` on demand via `Read`.
 
-When this document and `~/.claude/guidelines/rust.md` overlap:
+When this document and `~/.claude/rules/rust.md` overlap:
 
 - **Rust-specific implementation detail** (Newtype mechanics, panic policy, serde rules, error-type crates, async runtime) → `rust.md` wins.
 - **Layer responsibility, port placement, layer-boundary review observations** → this document wins.
@@ -342,8 +350,8 @@ Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer
 
 **Severity precedence when other guideline files apply:**
 
-- Test observations — `~/.claude/guidelines/testing.md` wins.
-- Docstring observations — `~/.claude/guidelines/docstrings.md` wins.
+- Test observations — `~/.claude/rules/testing.md` wins.
+- Docstring observations — `~/.claude/rules/docstrings.md` wins.
 - Rust-specific observations with an explicit severity in `rust.md` — `rust.md` wins.
 - This document's severity applies only to layer-responsibility / dependency-direction / port-placement observations not covered above.
 
