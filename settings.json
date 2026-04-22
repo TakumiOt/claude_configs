@@ -63,7 +63,10 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(uv run pytest:*)",
-      "Read(./.env.example)"
+      "Read(./.env.example)",
+      "Bash(~/.claude/scripts/diff-budget.sh)",
+      "Bash(~/.claude/scripts/diff-budget.sh *)",
+      "Read(~/.claude/rules/)"
     ],
     "deny": [
       "Bash(git add:*)",
@@ -175,5 +178,9 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/scripts/statusline.sh"
   }
 }
