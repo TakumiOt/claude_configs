@@ -59,19 +59,11 @@ If no file exists for the current language, fall back to the general guidance in
       - **i18n/l10n**: User-facing strings externalized, timezone/locale handling explicit, currency and number formatting correct.
       - **Configuration**: Environment-specific values externalized, no hardcoded URLs/credentials, sensible defaults, fail-fast on missing required config.
       - **Accessibility** (if UI): WCAG compliance for user-facing surfaces.
-- **Output scope**: You produce review findings only. Do NOT edit code. Do NOT run any state-modifying git command and do NOT propose commits — git operations are entirely the user's responsibility. Read-only git commands (`status` / `diff` / `log` / `show` / `blame`) are allowed for investigation.
-- **PR document fact-check (MANDATORY, scope limited)**: `docs/pr/<feature>-<slice>.md` is split-owned — `architect` fills scope / acceptance criteria / dependencies / diff budget; `pr-writer` fills 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点. You do NOT review prose quality, structure, or readability. Your responsibility is **factual consistency** between the document and the implementation:
-    1. **File exists**: `docs/pr/<feature>-<slice>.md` is present with both sets of sections filled. Missing file → 🔴 blocker (routed to `pr-writer` if prose sections are empty; routed to `architect` if scope sections are missing). Empty prose sections after implementation → 🔴 blocker (routed to `pr-writer`).
-    2. **変更内容 is grounded in the diff AND stays within the declared スコープ**: Every concrete claim (behavior change, moved/renamed symbol, affected subsystem) is verifiable from the actual code changes. Claims outside the skeleton's スコープ, or unverifiable claims → 🔴 blocker (routed to `pr-writer`; if the implementation itself exceeded scope, also route to `developer`).
-    3. **設計からの変更点 matches reality**: If the implementation deviates from `docs/design/<feature>.md`, the deviation is documented; if it does not deviate, the section says so. Contradicting the actual delta → 🔴 blocker (routed to `pr-writer`).
-    4. **テスト describes tests that actually exist**: The perspectives / scenarios named in the section correspond to tests present in the diff. Describing tests that were not added, or omitting significant tests that were added → 🔴 blocker (routed to `pr-writer`).
-    5. **影響範囲・注意点 covers reader-actionable consequences** of the actual change (breaking changes, migrations, config updates). Missing a reader-actionable consequence visible in the diff → 🟡 suggestion (routed to `pr-writer`).
-    6. **Scope sections consistent with implementation**: If the skeleton's スコープ / 受け入れ基準 no longer match what was implemented (scope creep or unmet criteria), flag to the orchestrator so `architect` can revise the skeleton or the slice plan. Do NOT accept silent drift.
-    7. Prose style, section prose quality, file-list-vs-prose format, test-naming-vs-perspective format → NOT your concern. Leave that to `pr-writer`'s own style rules.
+- **Output scope**: You produce review findings only for code, tests, docstrings, and dependencies. Do NOT edit code. Do NOT review the PR document (`docs/pr/<feature>-<slice>.md`) — that is `pr-reviewer`'s responsibility (style compliance + factual consistency against the implementation). Do NOT run any state-modifying git command and do NOT propose commits — git operations are entirely the user's responsibility. Read-only git commands (`status` / `diff` / `log` / `show` / `blame`) are allowed for investigation.
 - **Hand-off routing**: When you report findings, label each with the responsible agent:
     - Issues in code / tests / docstrings / dependencies → `developer`.
-    - Issues in `docs/pr/<feature>.md` → `pr-writer`.
-    - State the file path and line number (or section name, for PR doc issues) so the receiving agent can act on it.
+    - PR document issues surfaced incidentally while reviewing code → note briefly in the summary and defer to `pr-reviewer`; do not grade them here.
+    - State the file path and line number so the receiving agent can act on it.
 
 # Code Reviewer Agent
 

@@ -23,8 +23,9 @@ Agents and their responsibilities:
 
 1. **architect** — Design phase. Produces the feature-wide design document, decomposes the feature into **Vertical Slices**, and creates a PR skeleton per slice (scope, acceptance criteria, dependencies, diff budget). Does NOT write implementation code or the PR prose sections.
 2. **developer** — Implementation phase. Implements **one slice at a time**, scoped to the current PR skeleton's acceptance criteria. Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Does NOT write the PR prose sections.
-3. **pr-writer** — PR authoring phase. Fills the **prose sections** (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) of the current slice's PR skeleton, which already has scope and acceptance criteria filled in by `architect`. Writes feature-level prose summaries grounded in the design document and the diff — no file-by-file enumeration, no test-function-name lists.
-4. **code-reviewer** — Review phase. Independently reviews the current slice's code changes for architecture compliance, dependency health, slice-size compliance, and business application concerns, and fact-checks the slice's PR document against the implementation. Does NOT modify code or rewrite the PR document.
+3. **pr-writer** — PR authoring phase. Fills the **prose sections** (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) of the current slice's PR skeleton, which already has scope and acceptance criteria filled in by `architect`. Writes feature-level bullet summaries grounded in `~/.claude/rules/pr-style.md`, the design document, and the diff — no file-by-file enumeration, no test-function-name lists.
+4. **code-reviewer** — Code review phase. Independently reviews the current slice's code changes for architecture compliance, dependency health, slice-size compliance, and business application concerns. Does NOT review the PR document (that is `pr-reviewer`'s job) and does NOT modify code.
+5. **pr-reviewer** — PR document review phase. Independently reviews the current slice's `docs/pr/<feature>-<slice>.md` for style compliance against `~/.claude/rules/pr-style.md` AND factual consistency against the implementation (diff, tests, design). Does NOT review code quality and does NOT modify the PR document.
 
 ### Vertical Slice Decomposition (MANDATORY)
 
@@ -51,12 +52,15 @@ For every non-trivial change, the main conversation MUST execute the following l
       - Reads the design document, the slice's PR skeleton (already filled with scope / acceptance criteria by `architect`), the modified-file list, and the diff.
       - Fills 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点 per its own style rules. Does NOT rewrite scope / acceptance criteria / dependencies — those are `architect`-owned.
       - Reports the file path and any mismatches between design and implementation surfaced during self-check.
-   3. **code-reviewer** → independently reviews the slice's code and PR document, returning findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit. Each finding is routed to either `developer` (code/tests/docstrings/dependencies/slice-size) or `pr-writer` (PR document factual consistency). The reviewer does NOT grade PR prose style — that is `pr-writer`'s domain.
-   4. **Fix loop**: If code-reviewer returns any 🔴 blocker, OR any 🟡 suggestion that the user has not explicitly deferred:
-      - Route code-side findings to `developer`. If code changes occur, re-invoke `pr-writer` after `developer` finishes so the PR document stays in sync.
-      - Route PR-document-side findings to `pr-writer`.
-      - Then re-run step 3.3.
-   5. The per-slice loop exits only when code-reviewer returns **zero 🔴 blockers** and all non-deferred 🟡 items are addressed. The slice is then ready for the user to review and merge.
+   3. **code-reviewer and pr-reviewer in parallel** → the two reviewers look at disjoint artifacts and can run concurrently:
+      - **code-reviewer** grades code, tests, docstrings, dependencies, and slice-size. Findings route to `developer`.
+      - **pr-reviewer** grades the PR document on two axes: style (against `~/.claude/rules/pr-style.md` Severity Matrix) and factual consistency (against the diff and `docs/design/<feature>.md`). Findings route to `pr-writer` (prose sections), `architect` (scope sections or scope drift), or `developer` (when a PR-doc inconsistency reflects the implementation itself being out of scope).
+      - Each reviewer returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
+   4. **Fix loop**: If either reviewer returns any 🔴 blocker, OR any 🟡 suggestion that the user has not explicitly deferred:
+      - Route code-side findings to `developer`. If code changes occur, re-invoke `pr-writer` after `developer` finishes so the PR document stays in sync, then re-run both reviewers.
+      - Route PR-document prose findings to `pr-writer`; route PR-document scope-section findings (and scope drift) to `architect`. Re-run `pr-reviewer` after the fix.
+      - Re-run whichever reviewer(s) touched the changed artifact in step 3.3.
+   5. The per-slice loop exits only when BOTH reviewers return **zero 🔴 blockers** and all non-deferred 🟡 items are addressed. The slice is then ready for the user to review and merge.
 4. The overall task is complete when every slice has exited its per-slice loop. The user handles all git / merge operations between slices.
 
 When invoking the next agent, always pass the previous agent's output (design artifacts, slice skeleton path, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
@@ -70,11 +74,11 @@ The user is consulted **only** at these points (never between phases of the loop
 
 ## Definition of Done (ALL items MUST be satisfied)
 
-A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. The `code-reviewer` agent MUST reject any hand-off that skips these items.
+A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. `code-reviewer` MUST reject any hand-off that skips code-side items; `pr-reviewer` MUST reject any hand-off that skips PR-document items.
 
 1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with acceptance criteria and a Vertical Slice Decomposition (one slice per PR). ADRs created when applicable.
 1a. **Slice plan approved**: The user has approved the slice list (names, scopes, dependencies, order) before any `developer` work began.
-1b. **PR documents exist per slice**: `docs/pr/<feature>-<slice>.md` exists for every slice. Scope / acceptance criteria / dependencies / diff budget filled by `architect`; prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) filled by `pr-writer` after implementation. Factual consistency with the implementation confirmed by `code-reviewer`.
+1b. **PR documents exist per slice**: `docs/pr/<feature>-<slice>.md` exists for every slice. Scope / acceptance criteria / dependencies / diff budget filled by `architect`; prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) filled by `pr-writer` after implementation. Style compliance against `~/.claude/rules/pr-style.md` and factual consistency with the implementation are confirmed by `pr-reviewer`.
 1c. **Slice diff budget respected**: Each slice's diff stays within the soft target (400 lines) or has an explicit rationale if between 400 and 600. Exceeding the 600-line hard limit (production + test lines, **docstring lines excluded**) is a 🟡 finding from `code-reviewer` that must be addressed or explicitly deferred by the user. The **single canonical counter** is `~/.claude/scripts/diff-budget.sh` (invoked with the project's base branch as argument, defaulting to `main`). Every agent that needs a diff-line count MUST invoke this script and report the `counted` / `verdict` values from its output — do not re-derive the count via `git diff | wc -l` or other ad-hoc methods, as those will disagree on generated-file and docstring exclusions.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
@@ -82,7 +86,7 @@ A development task is NOT complete until every item below is true. The `develope
 5. **Function size**: No function exceeds 50 lines.
 6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
 7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
-8. **Independent review passed**: `code-reviewer` reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
+8. **Independent reviews passed**: BOTH `code-reviewer` (code / tests / docstrings / dependencies / slice size) AND `pr-reviewer` (PR document style + factual consistency) reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
 
 ## Dependency Approval Process (MANDATORY)
 
@@ -124,10 +128,11 @@ Agent files (`~/.claude/agents/*.md`) contain the detailed per-layer rules — t
 
 ## Guidelines to Read
 
-Detailed rules live in external files so this document stays short. All agents (`architect`, `developer`, `pr-writer`, `code-reviewer`) MUST `Read` the relevant files before starting work. Language-specific files override general guidance on conflict.
+Detailed rules live in external files so this document stays short. All agents (`architect`, `developer`, `pr-writer`, `code-reviewer`, `pr-reviewer`) MUST `Read` the relevant files before starting work. Language-specific files override general guidance on conflict.
 
 - **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
 - **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
+- **PR style** (every task that touches `docs/pr/**`): `~/.claude/rules/pr-style.md` — Core Rule (Bullets First), Formatting Constraints, Per-Section Style, Anti-Patterns, and the severity matrix used by `pr-reviewer`. Read by `architect` (scope sections), `pr-writer` (prose sections), and `pr-reviewer` (enforcement).
 - **Language** (per project): `~/.claude/rules/<language>.md` — test layout, task runner, error idioms.
   - Rust → `~/.claude/rules/rust.md`
   - (Add a new file per language as needed.)
@@ -155,7 +160,7 @@ When updating any of the three, verify the change belongs to that file's respons
 
 ### 3. Severity matrix placement
 
-Every rule file that `code-reviewer` consults for grading (currently `testing.md`, `docstrings.md`, `architecture.md`) MUST expose its severity matrix at the **bottom of the file under a `## Severity Matrix` heading** (consistent name and location). `code-reviewer` relies on a predictable anchor — do not scatter severity rules mid-document.
+Every rule file that a reviewer agent (`code-reviewer` or `pr-reviewer`) consults for grading (currently `testing.md`, `docstrings.md`, `architecture.md`, `pr-style.md`) MUST expose its severity matrix at the **bottom of the file under a `## Severity Matrix` heading** (consistent name and location). The reviewer agents rely on a predictable anchor — do not scatter severity rules mid-document.
 
 ### 4. Conflict resolution between overlapping rules
 

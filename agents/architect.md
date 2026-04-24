@@ -10,6 +10,7 @@ Before producing any design artifact, `Read` the following files. Design must re
 
 - **Architecture (every task)**: `~/.claude/rules/architecture.md` — Authoritative source for layer responsibilities, **interface placement rules** (Repository in Entity layer, Gateway in Use Case layer, QueryService in Use Case layer), and directory / crate structure for Clean Architecture. The "Placement judgement table" is the primary reference when deciding where a new port belongs. Cite the relevant sections from this guide when the design document explains layer-placement decisions.
 - **Testing (every task)**: `~/.claude/rules/testing.md` — Downstream `developer` uses BDD + Detroit school. Ports, use cases, and error types must be designed for real-collaborator testability. Anything requiring a `Stub` of a self-managed module is a design smell to be fixed **here**, before implementation starts.
+- **PR style (every task)**: `~/.claude/rules/pr-style.md` — Authoritative style rules for every section of `docs/pr/<feature>-<slice>.md`. You fill the scope sections (背景・目的 / スコープ / 受け入れ基準 / 依存スライス / Diff 予算 / 関連ドキュメント); they MUST conform to the Per-Section Style and Formatting Constraints in this file. `pr-reviewer` grades violations against the file's Severity Matrix.
 - **Language (per project)**: `~/.claude/rules/<language>.md` — test layout, async runtime, error idioms, etc.
   - Rust projects: `~/.claude/rules/rust.md`
 
