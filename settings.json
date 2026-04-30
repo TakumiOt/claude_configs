@@ -174,6 +174,8 @@
       "Bash(ftp:*)",
       "Bash(sftp:*)",
 
+      "Bash(sqlx:*)",
+
       "Read(./.env)",
       "Read(./.env.local)",
       "Read(./.env.develop)",
