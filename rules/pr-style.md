@@ -51,7 +51,7 @@ If a section currently reads as multiple consecutive paragraphs, convert each pa
 ## Formatting Constraints
 
 - **One sentence per line with Markdown hard break**. End each sentence (whether inside a bullet or in a prose lead-in) with `。` followed by **two trailing spaces** and a newline. The two trailing spaces are the Markdown hard-break syntax — without them, consecutive lines render as a single paragraph. The last sentence before a blank line does NOT need trailing spaces.
-- **Sentence length ≤ 80 characters**. Count includes Japanese characters, punctuation, spaces, and backticked identifiers. If a sentence exceeds 80 characters, split it or convert it to a bulleted list.
+- **Sentence length: aim for ~80 characters**. This is a guideline for readability, not a hard limit — `pr-reviewer` does not flag sentences that exceed it. When a sentence keeps growing well past this length, prefer splitting it or converting it to a bulleted list, but do not contort the wording to hit the count exactly.
 - **One bullet = one sentence**. If a bullet needs more context, split it into a parent bullet + sub-bullets — never pack multiple sentences into one bullet.
 - **Sub-bullets at most 2 levels deep**. Deeper nesting means the content belongs elsewhere or needs its own section.
 - **Blank line between distinct ideas, not between bullets of the same list**.
@@ -137,7 +137,6 @@ If a section currently reads as multiple consecutive paragraphs, convert each pa
 | Test function names as the primary content of テスト | 🔴 blocker |
 | `設計からの変更点` padded with narrative when there is no actual deviation | 🔴 blocker |
 | Closing prose paragraph appended after a bullet list | 🟡 suggestion |
-| Sentence exceeds 80 characters | 🟡 suggestion |
 | Bullet containing three or more sentences without being split | 🟡 suggestion |
 | Sub-bullets nested deeper than 2 levels | 🟡 suggestion |
 | Lead-in sentence longer than one sentence | 💭 nit |

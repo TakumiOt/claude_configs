@@ -29,6 +29,7 @@ If no file exists for the current language, fall back to the general guidance in
 
 - **Language policy**: Respond to the user in Japanese. Code, identifiers, and code comments stay in English.
 - **Architecture**: Strict Clean Architecture per `~/.claude/rules/architecture.md`. Dependencies point inward only. **Interface placement**: Repository in Entity layer, Gateway / QueryService in Use Case layer. Business logic lives in Entities — Use Cases orchestrate only. No serde / framework derives on Entities or Use Case DTOs. No Axum extractors reach Use Cases.
+- **Workspace structure (Rust)**: The project uses a Cargo workspace **split by bounded context** per `~/.claude/rules/architecture.md` "Directory and Crate Structure". When implementing a slice: place entities / use cases / adapters in the target domain crate (`crates/<domain>/src/{domain,usecase,adapter}/`), place Repository / Gateway implementations in `crates/infrastructure/src/{repository,http_client,messaging}/`, place binary wiring in `crates/app/`, and place integration / E2E tests in `crates/integration-tests/`. Never add a domain-crate-to-domain-crate dependency in `Cargo.toml`; if a slice appears to need one, the use case belongs in the central domain calling the other domain through a Gateway port — escalate to `architect` instead of adding the dependency.
 - **No speculative features**: Build only what the current task requires. No "in case we need it later" abstractions.
 - **Replace, don't deprecate**: Remove old code outright. Do not leave parallel old+new paths. Git history preserves the old version.
 - **Function size**: Hard limit 50 lines per function. Split when exceeded.
@@ -67,19 +68,20 @@ For each use case or behavior:
 
 ## 🏗️ Layer-by-Layer Implementation Order
 
-Work inside-out:
+Work inside-out. Crate locations below assume the Rust workspace layout from `~/.claude/rules/architecture.md`; for non-Rust projects, map to the equivalent module structure.
 
-1. **Entities** — Pure domain types with invariants enforced in constructors. No external dependencies.
-2. **Use Cases** — Orchestrate entities and call ports. Input/output DTOs owned here. Return domain error types.
-3. **Adapters** — Translate between Use Case DTOs and framework/protocol shapes (HTTP handlers, CLI, message handlers).
-4. **Infrastructure** — Concrete port implementations (DB repos, HTTP clients, file I/O). Integration tests live here.
+1. **Entities** (target domain crate, `src/domain/`) — Pure domain types with invariants enforced in constructors. No external dependencies. `shared-kernel` only.
+2. **Use Cases** (target domain crate, `src/usecase/`) — Orchestrate entities and call ports. Input / output DTOs owned here. Return domain error types. **Cross-domain orchestration is implemented as a use case in the central domain that calls Gateway ports**; never add a direct dependency on another domain crate.
+3. **Adapters** (target domain crate, `src/adapter/`) — Translate between Use Case DTOs and framework / protocol shapes (HTTP controllers, request / response DTOs, presenters, event handlers). The `app` crate composes adapters from each domain into the global router.
+4. **Infrastructure** (`crates/infrastructure/`) — Concrete port implementations (DB repositories under `src/repository/`, external API clients under `src/http_client/`, message bus under `src/messaging/`). All persistence and external-IO wiring lives here, never in a domain crate.
+5. **Integration / E2E tests** (`crates/integration-tests/`) — Per `~/.claude/rules/rust.md` "Test Layout", every integration and end-to-end test for the slice goes under `integration-tests/tests/`. Shared helpers (DB setup, fixtures, test HTTP clients) live in `integration-tests/src/lib.rs` and are imported via `use integration_tests::...;`. Do NOT create a `tests/` directory inside any domain crate or inside `infrastructure`.
 
 ## 🦀 Rust-Specific Guidance
 
 - **Error types**: Use `thiserror` for library/domain errors. Reserve `anyhow` for application entry points (`main`, binary CLI). Never expose `anyhow::Error` from a library crate.
 - **Result propagation**: Idiomatic `?`. No `.unwrap()` / `.expect()` in production code paths — only in tests or genuinely infallible contexts with a justifying comment.
 - **Ports as traits**: Define traits in the inner layer. Use `Box<dyn Trait>` or generics (`impl Trait` / `T: Trait`) to inject implementations. Prefer generics when there's a single concrete impl per binary; `dyn` when runtime selection is needed.
-- **Testing**: Layout and tooling rules (unit test colocation, `tests/` integration directory, `rstest`, `mockall` scope) live in `~/.claude/rules/rust.md` and `~/.claude/rules/testing.md`. Follow both.
+- **Testing**: Layout and tooling rules (unit-test colocation, the dedicated `integration-tests` crate, `rstest`, `mockall` scope) live in `~/.claude/rules/rust.md` and `~/.claude/rules/testing.md`. Follow both.
 - **Ownership / borrowing**: No reflexive `.clone()` to silence the borrow checker. If cloning is necessary, leave a `// Why:` comment explaining the ownership decision.
 - **Lints**: Treat `clippy::pedantic` warnings as worth addressing. `#[allow(...)]` requires a justifying comment.
 - **Async**: Use `tokio` by default in application code. Keep domain logic sync where possible — async should live at the adapter/infrastructure boundary.

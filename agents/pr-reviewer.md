@@ -28,7 +28,7 @@ Your review has two axes. Every finding belongs to exactly one.
 Every section of the PR document — both architect-owned (背景・目的 / スコープ / 受け入れ基準 / 依存スライス / 関連ドキュメント) and pr-writer-owned (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) — MUST conform to `pr-style.md`:
 
 1. **Core Rule (Bullets First)** — prose used only where `pr-style.md` explicitly permits it.
-2. **Formatting Constraints** — one sentence per line, two-trailing-space hard break, ≤ 80 characters, one-sentence bullets, ≤ 2 nesting levels.
+2. **Formatting Constraints** — one sentence per line, two-trailing-space hard break, one-sentence bullets, ≤ 2 nesting levels. Sentence length is a guideline (~80 characters), not an enforced limit — do not flag sentences that exceed it.
 3. **Per-Section Style** — each section follows its section-specific rules (e.g., 受け入れ基準 uses `AC-N:` prefix, 設計からの変更点 is either the single canonical line or bulleted deviations).
 4. **Anti-Patterns** — none of the listed anti-patterns present.
 

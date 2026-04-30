@@ -137,41 +137,75 @@ One axis of judgement: **is the target a self-domain concept, or an external sys
 
 ## Directory and Crate Structure
 
-### Recommended: workspace (multi-crate)
+Rust projects MUST use a Cargo workspace, split **by bounded context (domain)** rather than by Clean Architecture layer. Splitting by domain keeps related business rules cohesive within one crate so a reader can follow a domain end-to-end without crate hopping; technical concerns (DB, external IO) are concentrated in a separate `infrastructure` crate. Layered splits at workspace level (`domain` / `usecase` / `adapter` crates) are NOT used in this project.
 
-Enforces dependency direction at the compiler level.
+### Workspace layout (project default)
 
 ```text
-Cargo.toml            # workspace root
+Cargo.toml                         # workspace root: declares [workspace] members (no [package])
 crates/
-├── domain/           # Entity layer (no dependencies)
-├── usecase/          # Use Case layer (depends on domain)
-├── adapter/          # Adapter layer (depends on usecase, domain)
-└── app/              # bin crate (wires everything)
+├── shared-kernel/
+│   ├── Cargo.toml                 # [package] no workspace dependencies
+│   └── src/lib.rs                 # cross-cutting value objects and ports (Clock, Money, Email, etc.)
+├── <domain-a>/                    # bounded context A (e.g. user, order, payment)
+│   ├── Cargo.toml                 # [package] dependencies = shared-kernel only
+│   └── src/
+│       ├── lib.rs
+│       ├── domain/                # entities, value objects, repository ports, domain errors
+│       ├── usecase/               # use cases, input/output DTOs, gateway / query-service ports
+│       └── adapter/               # controllers, presenters, request/response DTOs
+├── <domain-b>/
+│   ├── Cargo.toml
+│   └── src/{lib.rs, domain/, usecase/, adapter/}
+├── infrastructure/                # technical concerns concentrated here
+│   ├── Cargo.toml                 # dependencies = every domain crate + shared-kernel
+│   └── src/
+│       ├── lib.rs
+│       ├── persistence/           # DB connection pool, migrations, shared query helpers
+│       ├── repository/            # implementations of every domain crate's repository port
+│       ├── http_client/           # external API clients (gateway implementations)
+│       └── messaging/             # message queue, event bus
+├── app/                           # composition root (binary)
+│   ├── Cargo.toml                 # depends on every crate above
+│   └── src/{lib.rs, bin/<name>.rs}
+└── integration-tests/             # cross-crate integration / E2E tests
+    ├── Cargo.toml                 # depends on every domain crate + infrastructure + app
+    ├── src/lib.rs                 # shared test helpers (DB setup, fixtures)
+    └── tests/                     # integration / E2E test bodies (see rust.md "Test Layout")
 ```
 
-### Small-to-medium: single crate
+### Dependency direction (workspace level)
 
-```text
-src/
-├── main.rs
-├── domain/              # Entity layer
-├── usecase/             # Use Case layer
-├── adapter/             # Adapter layer
-│   ├── controller/
-│   ├── presenter/
-│   ├── repository/
-│   └── gateway/
-└── infrastructure/      # Framework & Drivers
-```
+The compiler enforces this graph through each crate's `Cargo.toml` `[dependencies]`. `code-reviewer` performs a second-stage review of the dependency declarations as a backstop.
+
+- `shared-kernel` — depends on nothing.
+- `<domain-*>` — depends only on `shared-kernel`. **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
+- `infrastructure` — depends on every domain crate and `shared-kernel`. It implements each domain's Repository / Gateway ports so all DB and external-IO concerns live here.
+- `app` — depends on every crate. Wires the composition root, builds the Axum `Router`, owns binary entry points.
+- `integration-tests` — depends on every domain crate, `infrastructure`, and `app`. It exists only as a test harness.
+
+### Adapter placement
+
+Adapters (HTTP controllers, request/response DTOs, presenters) live **inside each domain crate's `adapter/` module**, NOT in a separate workspace-level adapter crate. The `app` crate imports each domain's adapter module and composes the global router. This keeps domain cohesion high while still surfacing the routing graph from one place.
+
+### Cross-domain use cases
+
+A use case that touches multiple bounded contexts (e.g. "place order" reaching into inventory and payment) is implemented in the **most central domain's `usecase/` module**, with the other domains exposed as Gateway ports injected at composition. Do NOT introduce a workspace-level `application` crate for cross-domain orchestration — it usually signals the central domain has not been identified, or that domain boundaries themselves need revisiting (escalate to `architect`).
+
+### Single-domain projects
+
+If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app`, and `integration-tests`. Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
 
 ### Structure review checklist
 
-- [ ] In workspace layouts, each crate's `Cargo.toml` dependency list reflects the inward-only direction.
-- [ ] `domain` does not depend on `adapter` or `infrastructure`.
-- [ ] `usecase` does not depend on `adapter` or `infrastructure`.
-- [ ] Directory names match the canonical vocabulary (`domain`, `usecase`, `adapter`, `infrastructure`).
-- [ ] The Adapter layer is subdivided by role (`controller`, `presenter`, `repository`, `gateway`).
+- [ ] The workspace splits crates **by bounded context**, not by Clean Architecture layer (no `domain` / `usecase` / `adapter` crates at workspace level).
+- [ ] Each crate directory contains its own `Cargo.toml` declaring `[package]` and `[dependencies]`.
+- [ ] Domain crate `Cargo.toml` files declare no dependency on other domain crates (verify in `[dependencies]`).
+- [ ] `shared-kernel`'s `Cargo.toml` declares no dependency on any other workspace crate.
+- [ ] Persistence and external-IO implementations live in the `infrastructure` crate; no domain crate contains DB pool / HTTP-client wiring.
+- [ ] Each domain crate's source layout uses `domain/` / `usecase/` / `adapter/` modules; the inward-only direction is preserved within the crate via module visibility (`pub(crate)` and narrower).
+- [ ] Cross-domain use cases live in the central domain's `usecase/` module and reach other domains only through Gateway ports.
+- [ ] Integration / E2E tests live in the `integration-tests` crate (see `rust.md` "Test Layout"), not in any domain crate's `tests/`.
 
 ---
 
