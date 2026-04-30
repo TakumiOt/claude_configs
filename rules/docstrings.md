@@ -54,7 +54,7 @@ This rule applies to inline `// why` comments as well: write the *why*, not a po
 - Descriptions obvious from the type name alone (e.g. "A function that does X", "A class for Y").
 - Non-English docstrings on public API.
 - Leaving the design-document draft as-is after implementation, without refining it against the code.
-- References to ADR numbers, `docs/design/*` paths, phase names, ticket IDs, or commit hashes used as load-bearing context (see "Self-Contained" above).
+- References to ADR numbers, `docs/design/**` paths, phase names, ticket IDs, or commit hashes used as load-bearing context (see "Self-Contained" above).
 
 ## Review Severity Matrix (for `code-reviewer`)
 

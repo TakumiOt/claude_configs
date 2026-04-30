@@ -1,11 +1,11 @@
 ---
 name: pr-style
-description: Authoritative style rules for every section of docs/pr/<feature>-<slice>.md. Owned jointly by architect (scope sections) and pr-writer (prose sections); enforced by pr-reviewer.
+description: Authoritative style rules for every section of docs/pr/<feature>/<slice>.md. Owned jointly by architect (scope sections) and pr-writer (prose sections); enforced by pr-reviewer.
 ---
 
 # PR Document Style Rules
 
-This file is the single source of truth for the visual and structural style of `docs/pr/<feature>-<slice>.md`. Every agent that reads, writes, or reviews a PR document MUST follow the rules below.
+This file is the single source of truth for the visual and structural style of `docs/pr/<feature>/<slice>.md`. Every agent that reads, writes, or reviews a PR document MUST follow the rules below.
 
 ## Precedence
 
@@ -18,7 +18,7 @@ On conflict with style-related wording elsewhere, this file wins:
 
 Applies to every section, regardless of which agent authors it:
 
-- **architect-owned sections**: 背景・目的, スコープ, 受け入れ基準, 依存スライス, Diff 予算, 関連ドキュメント.
+- **architect-owned sections**: 背景・目的, スコープ, 受け入れ基準, 依存スライス, 関連ドキュメント.
 - **pr-writer-owned sections**: 変更内容, 設計からの変更点, テスト, 影響範囲・注意点.
 
 Section ownership (who fills what, when) is defined in the agent files; this rule governs *how* each section must read.
@@ -78,11 +78,6 @@ If a section currently reads as multiple consecutive paragraphs, convert each pa
 
 - Bulleted list of prerequisite slices, or the single line `なし` if none.
 - Conditions that are not prerequisite slices (e.g., "Tailwind 依存追加のユーザー承認") go on their own bullet prefixed `前提条件: `.
-
-### Diff 予算 (architect)
-
-- One line stating the budget.
-- If the slice is expected to exceed the budget, follow with a bulleted list of reasons. Never embed the reasoning in a paragraph.
 
 ### 関連ドキュメント (architect)
 

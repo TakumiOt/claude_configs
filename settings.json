@@ -104,10 +104,18 @@
       "Bash(ls:*)",
       "Bash(awk:*)",
       "Bash(sed:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(xargs:*)",
+      "Bash(jq:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git blame:*)",
       "Bash(uv run pytest:*)",
       "Read(./.env.example)",
-      "Bash(~/.claude/scripts/diff-budget.sh)",
-      "Bash(~/.claude/scripts/diff-budget.sh *)",
       "Read(~/.claude/rules/)"
     ],
     "deny": [
@@ -144,6 +152,9 @@
       "Bash(find * -exec sh*)",
       "Bash(find * -exec chmod*)",
       "Bash(find * -exec chown*)",
+
+      "Bash(python -c:*)",
+      "Bash(python3 -c:*)",
 
       "Bash(sudo:*)",
       "Bash(su:*)",

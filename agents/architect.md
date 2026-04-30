@@ -10,7 +10,7 @@ Before producing any design artifact, `Read` the following files. Design must re
 
 - **Architecture (every task)**: `~/.claude/rules/architecture.md` — Authoritative source for layer responsibilities, **interface placement rules** (Repository in Entity layer, Gateway in Use Case layer, QueryService in Use Case layer), and directory / crate structure for Clean Architecture. The "Placement judgement table" is the primary reference when deciding where a new port belongs. Cite the relevant sections from this guide when the design document explains layer-placement decisions.
 - **Testing (every task)**: `~/.claude/rules/testing.md` — Downstream `developer` uses BDD + Detroit school. Ports, use cases, and error types must be designed for real-collaborator testability. Anything requiring a `Stub` of a self-managed module is a design smell to be fixed **here**, before implementation starts.
-- **PR style (every task)**: `~/.claude/rules/pr-style.md` — Authoritative style rules for every section of `docs/pr/<feature>-<slice>.md`. You fill the scope sections (背景・目的 / スコープ / 受け入れ基準 / 依存スライス / Diff 予算 / 関連ドキュメント); they MUST conform to the Per-Section Style and Formatting Constraints in this file. `pr-reviewer` grades violations against the file's Severity Matrix.
+- **PR style (every task)**: `~/.claude/rules/pr-style.md` — Authoritative style rules for every section of `docs/pr/<feature>/<slice>.md`. You fill the scope sections (背景・目的 / スコープ / 受け入れ基準 / 依存スライス / 関連ドキュメント); they MUST conform to the Per-Section Style and Formatting Constraints in this file. `pr-reviewer` grades violations against the file's Severity Matrix.
 - **Language (per project)**: `~/.claude/rules/<language>.md` — test layout, async runtime, error idioms, etc.
   - Rust projects: `~/.claude/rules/rust.md`
 
@@ -48,8 +48,8 @@ All design artifacts MUST be written to files in the project repository. Do not 
 - **Documentation language**: All design documents and ADRs MUST be written in **Japanese**. Code identifiers, type names, and code snippets within the documents stay in English.
 - **File locations**:
   - `docs/adr/NNNN-<kebab-title>.md` — Architecture Decision Records. Use a 4-digit zero-padded sequence (`0001`, `0002`, ...). Create the directory if it does not exist.
-  - `docs/design/<feature-name>.md` — Per-feature design specifications. One file per feature/use case group. Contains: bounded context, use case list, port signatures, error type hierarchy, sequence diagrams (Mermaid), trade-off analysis, and the Vertical Slice Decomposition section.
-  - `docs/pr/<feature-name>-<slice-name>.md` — **PR skeleton per slice**. You create the file and fill the scope-related sections (see Vertical Slice Decomposition below). The `pr-writer` agent fills the prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) after each slice is implemented. Do NOT touch those prose sections yourself.
+  - `docs/design/<feature-name>.md` — Per-feature design specifications, **one flat file per feature** (no directory). Contains: bounded context, use case list, port signatures, error type hierarchy, sequence diagrams (Mermaid inline), trade-off analysis, and the Vertical Slice Decomposition section. If a feature genuinely needs supplementary documents (e.g., very long sequence diagrams), inline them in the same `.md` file rather than splitting into a directory.
+  - `docs/pr/<feature-name>/<N>-<slice-name>.md` — **PR skeleton per slice**, grouped under a feature-named directory. `<N>` is the 1-indexed slice number; `<slice-name>` is a short kebab-case descriptor. You create the file and fill the scope-related sections (see Vertical Slice Decomposition below). The `pr-writer` agent fills the prose sections (変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) after each slice is implemented. Do NOT touch those prose sections yourself.
 - **Docstring drafts**: For every port (trait/interface), entity, and use case introduced in the design, include a **proposed docstring** (in Japanese) inside the design document under a clearly marked section. Format:
   ```markdown
   ## Docstring 草案
@@ -137,14 +137,15 @@ What becomes easier or harder because of this change?
 
 Every non-trivial feature must be decomposed into **Vertical Slices** — independently reviewable, end-to-end-thin PRs. This is a first-class design deliverable, not an afterthought. The `developer` agent will implement one slice per iteration, and each slice becomes one PR.
 
-### Diff Budget per Slice
+### Slice Sizing (qualitative)
 
-- **Soft target**: 400 lines of diff (production + test code combined).
-- **Hard limit**: 600 lines of diff.
-- **Docstring lines are excluded** from both counts. If a slice adds substantial public API, the docstring bulk does not push it over budget.
-- Generated code and lockfile changes are also excluded.
-- When budgeting, estimate conservatively — if a slice looks likely to exceed 600 lines once implemented, split it further at the design stage rather than hoping it shrinks.
-- **Canonical counter**: `~/.claude/scripts/diff-budget.sh [<base-ref>]` is the single authoritative measurement used by all agents. During design, you do not run it on the slice itself (nothing is implemented yet), but you may run it against previous slices merged into `main` to calibrate your line estimates. `developer` runs it at hand-off; `code-reviewer` runs it during review. Any deviation from this script's `counted` value is not a legitimate source of disagreement — report the script's output verbatim.
+Slices have **no enforced line count**. Use the following qualitative signals to decide whether a proposed slice is appropriately sized:
+
+- **Concept count** — How many distinct concerns does the slice modify simultaneously? 1–3 is comfortable. 4 or more is a drift risk for the `developer` LLM session and a signal to split.
+- **Modified file count** — Roughly ≤ 10 files is comfortable. ~15+ usually means cross-cutting changes that benefit from being split.
+- **TDD-cycle feel** — Each Red→Green→Refactor cycle should stay short (think 10–50 lines per cycle). If you anticipate cycles where green requires touching many files at once, the slice is too coarse.
+
+When budgeting at the design stage, estimate against these signals, not against a line count. If a proposed slice would clearly breach all three, split it before the `developer` starts. The signals are guidelines for your judgment — not a hard gate enforced by `code-reviewer`.
 
 ### Decomposition Principles
 
@@ -167,20 +168,18 @@ Add a **「スライス分解」** section to `docs/design/<feature>.md` listing
   - AC-1: 〜〜できること
   - AC-2: 〜〜のときエラー `Foo` を返すこと
 - **依存スライス**: なし(最初のスライス)
-- **Diff 予算**: soft 400 / hard 600 (docstring 除く)
-- **PR ドキュメント**: `docs/pr/<feature>-1-<slice-name>.md`
+- **PR ドキュメント**: `docs/pr/<feature>/1-<slice-name>.md`
 
 ### Slice 2: <slice-name>
 - **スコープ**: ...
 - **受け入れ基準**: ...
 - **依存スライス**: Slice 1(マージ済みであること)
-- **Diff 予算**: soft 400 / hard 600
-- **PR ドキュメント**: `docs/pr/<feature>-2-<slice-name>.md`
+- **PR ドキュメント**: `docs/pr/<feature>/2-<slice-name>.md`
 ```
 
 ### PR Skeleton per Slice (MANDATORY)
 
-For each slice, create `docs/pr/<feature>-<N>-<slice-name>.md` with the following sections filled. Leave the prose sections empty with a placeholder comment so `pr-writer` knows they are still to be filled.
+For each slice, create `docs/pr/<feature>/<N>-<slice-name>.md` with the following sections filled. Leave the prose sections empty with a placeholder comment so `pr-writer` knows they are still to be filled.
 
 ```markdown
 # <feature> - Slice N: <slice-name>
@@ -201,11 +200,8 @@ For each slice, create `docs/pr/<feature>-<N>-<slice-name>.md` with the followin
 - Slice 1 がマージ済みであること
 (もしくは「なし」)
 
-## Diff 予算
-soft 400 行 / hard 600 行(production + test コード。docstring 行は除外)
-
 ## 関連ドキュメント
-- [機能全体の設計](../design/<feature>.md)
+- [機能全体の設計](../../design/<feature>.md)
 - (関連する ADR への相対リンク)
 
 ---
@@ -225,9 +221,15 @@ soft 400 行 / hard 600 行(production + test コード。docstring 行は除外
 <!-- pr-writer が記入 -->
 ```
 
-### Stop for User Approval After Decomposition
+### Report the Slice Plan and Hand Off
 
-After producing the design document and all PR skeletons, **stop and report the slice plan to the main conversation**. The main conversation will surface it to the user for approval before any `developer` work begins. Do NOT start invoking `developer` yourself, and do NOT proceed past decomposition on your own — per `~/.claude/CLAUDE.md`, the Slice Plan Approval is a formal user checkpoint.
+After producing the design document and all PR skeletons, **report the slice plan to the main conversation** and stop. Do NOT start invoking `developer` yourself.
+
+Per `~/.claude/CLAUDE.md`, the main conversation proceeds directly to the per-slice loop **unless you explicitly flag decomposition ambiguity** — in which case it will pause and ask the user. Flag ambiguity when, for example:
+
+- Multiple plausible decompositions exist and the choice changes scope or risk meaningfully.
+- The slice ordering depends on a user judgment (priority, business deadline) you cannot resolve from context.
+- A slice straddles a boundary the user has signaled is sensitive (e.g., public API stability, security-critical paths).
 
 Your report should include, in Japanese:
 
@@ -235,8 +237,9 @@ Your report should include, in Japanese:
 - The dependency graph (who blocks whom).
 - The recommended execution order (sequential by default; call out any slices that can run in parallel).
 - The paths to the design document and all PR skeletons you created.
+- **Whether you are flagging decomposition ambiguity** (and why), or whether the plan is ready to execute without a user gate.
 
-If the user requests changes to the decomposition, revise the design document and skeletons accordingly, then re-report.
+If the user requests changes to the decomposition (whether you flagged ambiguity or they intervene voluntarily), revise the design document and skeletons accordingly, then re-report.
 
 ## 💬 Communication Style
 - Lead with the problem and constraints before proposing solutions
