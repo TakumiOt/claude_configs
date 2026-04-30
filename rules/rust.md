@@ -94,8 +94,64 @@ This section refines the Testing rules from the global `CLAUDE.md` for Rust. BDD
 ## Visibility and API Surface
 
 - Default to the narrowest visibility: private → `pub(crate)` → `pub(super)` → `pub`. Widen only when a real caller needs it.
-- `pub` items require English docstrings (`///`). `pub(crate)` and narrower do not, but should still have clear names.
+- `pub` items require English docstrings — see "Docstrings (Rust overlay)" below for the exact section layout.
 - Avoid re-exporting third-party types through your public API unless the dependency is intentionally part of your contract.
+
+## Docstrings (Rust overlay)
+
+This section maps the general rules in `~/.claude/rules/docstrings.md` onto Rust's idiomatic doc-comment conventions. On conflict with `docstrings.md`, this section wins for `.rs` files; the underlying "Summary / Why / Contract / Side effects / Example" requirements still apply.
+
+### Comment style
+
+- `///` documents the item that follows. Use it for `pub` functions, methods, structs, enums, unions, traits, type aliases, and constants.
+- `//!` is an inner doc comment. Use it for module-level docs (top of `mod.rs` / `<module>.rs`) and crate-level docs (top of `src/lib.rs`).
+- Place doc comments directly above the item — no blank line between the comment and the item.
+
+### Section heading layout
+
+Rustdoc uses standard `#`-headed sections. Layer the general docstring structure onto them as follows. Headings inside a doc comment use a single `#` at the line start (`# Examples`, `# Errors`, ...).
+
+| General item (from `docstrings.md`) | Rust placement |
+|---|---|
+| 1. Summary (one line) | First line of the doc comment, terminated by a blank line. Reused as the search-result snippet — keep it concise. |
+| 2. Why / Responsibility | Free-form prose paragraph(s) after the summary, before any `#`-headed section. |
+| 3. Contract — parameters and return | Free-form prose. Add `# Arguments` / `# Returns` headings only when the contract is non-trivial. |
+| 3. Contract — error variants | `# Errors` section. **Required** whenever the function returns `Result`. List the domain error variants and the conditions that trigger each. |
+| 3. Contract — panic conditions | `# Panics` section. **Required** whenever the function may panic, including a non-trivial `.expect("...")` and panics from a violated precondition. |
+| 4. Side effects | Surface in the Why / detail area when present (I/O, state mutation, external call, blocking, async cancellation behavior). State "Pure" when none. |
+| 5. Example | `# Examples` section with a runnable doc test in a ` ```rust ` fenced block. **Required** on traits and on `pub` functions whose intended usage is non-obvious. |
+| Unsafe contract | `# Safety` section. **Required** for every `unsafe fn` and `unsafe trait`, listing the invariants the caller must uphold. |
+
+### Intra-doc links
+
+- Reference other items via intra-doc link syntax: `` [`UserId`] ``, `` [`Repository::find`] ``, `` [`crate::shared_kernel::Email`] ``. Do not hand-construct URLs to docs.rs or relative HTML paths — they break on rename and across crate versions.
+- Enable `#![warn(rustdoc::broken_intra_doc_links)]` at the crate root so dangling links surface during `cargo make lint`, not only at `cargo doc` time.
+
+### Doc-test discipline
+
+- ` ```rust ` blocks (the default) are compiled and run by `cargo make test`. Keep them green — they are part of the test suite, not decoration.
+- Use `no_run` only when the example performs real I/O the test environment cannot satisfy (network, filesystem, database). Use `ignore` only with an inline comment stating the reason.
+- Do not hide non-trivial setup behind `# `-prefixed lines. The visible portion of the example must reflect realistic usage so readers can copy-paste it into their own crate.
+
+### Port traits
+
+- Trait-level `///`: describe the abstract domain contract — what the port promises to the use case layer — without naming the infrastructure backing it.
+- Method-level `///`: the `# Errors` section MUST list **domain** error variants (`UserNotFound`, `EmailAlreadyTaken`, ...). Infrastructure error types (`sqlx::Error`, `reqwest::Error`, `std::io::Error`) MUST NOT appear in port docstrings — they are converted at the adapter boundary.
+- `# Examples` on a port trait should reference an in-memory or fake implementation, not the real infrastructure adapter, so the example documents the contract rather than a particular adapter.
+
+### Lint enforcement
+
+- Enable `#![warn(missing_docs)]` at the crate root of every library crate so the compiler enforces docstring presence on `pub` items. `cargo make lint` MUST remain green with this lint active.
+
+`code-reviewer` MUST apply the following severities in addition to the matrix in `docstrings.md`:
+
+- A `pub` function returning `Result` without an `# Errors` section → 🔴 blocker.
+- A function that may panic (including a non-trivial `.expect("...")`) without a `# Panics` section → 🔴 blocker.
+- An `unsafe fn` or `unsafe trait` without a `# Safety` section → 🔴 blocker.
+- A port-trait method's `# Errors` section that names infrastructure error types instead of domain variants → 🔴 blocker (counts as "infrastructure leakage into the inner layer").
+- Hand-constructed URLs to other items instead of intra-doc links → 🟡 suggestion.
+- A doc test marked `ignore` without an inline reason → 🟡 suggestion.
+- An `# Examples` block on a port trait that wires real infrastructure rather than a fake → 🟡 suggestion.
 
 ## Async
 
