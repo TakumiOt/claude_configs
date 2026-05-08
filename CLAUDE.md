@@ -28,11 +28,11 @@ IMPORTANT: Development work is routed onto one of three execution paths. Pick th
 
 Agents and their responsibilities:
 
-1. **architect** — Design phase. Produces the feature-wide design document including a **Task Decomposition** (flat list of atomic tasks with ID, scope, AC, dependencies) and **port-level docstring drafts only**. Does NOT write PR documents, does NOT draft entity/use-case docstrings, does NOT decide PR aggregation, does NOT write implementation code.
-2. **developer** — Implementation phase. Implements **one task at a time** per invocation, scoped to that task's entry in the design document's Task Decomposition. Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Writes docstrings per `~/.claude/rules/docstrings.md`; for ports, transcribes the draft from the design doc and refines. Does NOT touch any PR document.
-3. **pr-writer** — PR authoring phase. Invoked when the main conversation aggregates one or more completed tasks into a PR. Creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch — there is no pre-filled skeleton. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`, grounded in the design doc, the bundled task list, and the cumulative diff.
+1. **architect** — Design phase. Produces design artifacts in **one or more bounded-context directories** (`docs/design/<bounded-context>/`), each including a **Task Decomposition** (flat list of atomic tasks with ID, scope, AC, dependencies) and **port-level docstring drafts only**. A single feature may touch multiple bounded contexts and therefore update multiple directories. Does NOT write PR documents, does NOT draft entity/use-case docstrings, does NOT decide PR aggregation, does NOT write implementation code.
+2. **developer** — Implementation phase. Implements **one task at a time** per invocation, scoped to that task's entry in the Task Decomposition of the owning bounded-context directory. Reads `docs/design/<bounded-context>/` for the bounded context the task belongs to, plus any cross-context dependencies the task references (e.g. `docs/design/shared-kernel/`). Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Writes docstrings per `~/.claude/rules/docstrings.md`; for ports, transcribes the draft from the design doc and refines. Does NOT touch any PR document.
+3. **pr-writer** — PR authoring phase. Invoked when the main conversation aggregates one or more completed tasks into a PR. Creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch — there is no pre-filled skeleton. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`, grounded in **all bounded-context directories the bundled tasks touch**, the bundled task list, and the cumulative diff.
 4. **code-reviewer** — Code review phase. Invoked per task (Phase 2) — reviews the task's code changes for architecture compliance, dependency health, scope adherence (boundary = the task entry in the design doc), and business application concerns. Does NOT review PR documents and does NOT modify code.
-5. **pr-reviewer** — PR document review phase. Invoked per aggregation (Phase 3) — independently reviews `docs/pr/<feature>/<N>-<aggregation>.md` for style compliance against `~/.claude/rules/pr-style.md` AND factual consistency against the bundled task list, the cumulative diff, and the design doc. Does NOT review code quality and does NOT modify the PR document.
+5. **pr-reviewer** — PR document review phase. Invoked per aggregation (Phase 3) — independently reviews `docs/pr/<feature>/<N>-<aggregation>.md` for style compliance against `~/.claude/rules/pr-style.md` AND factual consistency against the bundled task list, the cumulative diff, and **every bounded-context directory the bundled tasks touch**. Does NOT review code quality and does NOT modify the PR document.
 
 ### Lightweight Path (Path B)
 
@@ -50,7 +50,7 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 
 **Reduced flow**:
 
-1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for `docs/design/<feature>.md` or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
+1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any design directory (`docs/design/<bounded-context>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence against the change description. Findings route to `developer`.
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
 
@@ -69,21 +69,34 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 - Sized qualitatively: typically ≤ 1 conceptual change and ≤ 3 modified files per task. If a proposed task clearly exceeds this, split it before handing off.
 - `developer` implements exactly one task per invocation. Future tasks are ignored even if visible from the current code path.
 
-**Documented in the design document** under `## タスク分解` — owned by `architect`. There is **no per-task PR skeleton**: `architect` does not create or pre-fill any file under `docs/pr/`. PR documents are produced by `pr-writer` only when an aggregation is triggered (see Phase 3 below).
+**Documented in the design directory** under a `## タスク分解` section, in whichever file of `docs/design/<bounded-context>/` the architect places it (typically `tasks.md` or the `README.md`) — owned by `architect`. Each bounded-context directory carries its own Task Decomposition for the tasks scoped to that bounded context. There is **no per-task PR skeleton**: `architect` does not create or pre-fill any file under `docs/pr/`. PR documents are produced by `pr-writer` only when an aggregation is triggered (see Phase 3 below).
 
-**Documentation directory layout (MANDATORY)**: Design docs are flat (one file per feature). PR docs are grouped under a feature-named directory and numbered by aggregation order (PR sequence within the feature), not by task. ADRs remain flat at `docs/adr/` because they are cross-cutting.
+**Documentation directory layout (MANDATORY)**: Design docs are organized **by bounded context** as directories under `docs/design/<bounded-context>/`. One bounded context = one directory. Cross-cutting layers that are not domains in the DDD sense (`shared-kernel`, `infrastructure`) are treated as bounded contexts of their own and get their own directories — domain-side design docs reference them rather than embedding their details. PR docs remain grouped by **feature** (the deliverable unit), since one PR typically aggregates work across multiple bounded contexts. ADRs remain flat at `docs/adr/` because they are cross-cutting.
 
 ```
 docs/
 ├── design/
-│   └── <feature>.md                  # design + Task Decomposition + port docstring drafts
+│   ├── <bounded-context-A>/             # one directory per bounded context
+│   │   ├── README.md                    # entry point: 背景・目的・依存関係・目次
+│   │   ├── <split-as-needed>.md         # internal file split is at architect's discretion
+│   │   └── tasks.md                     # Task Decomposition for this bounded context
+│   ├── <bounded-context-B>/
+│   ├── shared-kernel/                   # cross-cutting kernel as its own design doc
+│   └── infrastructure/                  # cross-cutting infrastructure as its own design doc
 ├── pr/<feature>/
-│   ├── 1-<aggregation-name>.md       # one file per PR aggregation; created by pr-writer
-│   ├── 2-<aggregation-name>.md       # ...
+│   ├── 1-<aggregation-name>.md          # one file per PR aggregation; created by pr-writer
+│   ├── 2-<aggregation-name>.md          # ...
 │   └── ...
 └── adr/
-    └── NNNN-<kebab-title>.md         # cross-cutting ADRs (unchanged)
+    └── NNNN-<kebab-title>.md            # cross-cutting ADRs (unchanged)
 ```
+
+Design directory rules:
+
+- Each bounded-context directory MUST contain a `README.md` that serves as the entry point — background, scope summary, dependency edges to other bounded contexts, and a table of contents pointing to internal files.
+- Internal file splitting is at the `architect`'s discretion. Small bounded contexts may keep everything in `README.md`; larger ones split per topic (use cases, ports, schema, tasks, etc.).
+- Required Sections from `~/.claude/rules/design-doc-style.md` are satisfied **at the directory level** — every required section must be present somewhere in the directory, but architect chooses which file hosts it.
+- Cross-bounded-context references use relative Markdown links (e.g. `../shared-kernel/README.md`).
 
 PR files use the PR sequence number as a prefix (`1-`, `2-`, ...). `<aggregation-name>` is a short kebab-case descriptor of what the PR ships. The feature name is implied by the directory and is NOT repeated in the file name. PR files are created at aggregation time, not upfront.
 
@@ -93,8 +106,9 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
 
 #### Phase 1 — Design
 
-1. **architect** → produces design artifacts:
-   - Creates `docs/design/<feature>.md` with: clarified requirements, bounded context, use case list, port signatures (each annotated with placement layer), error type hierarchy, trade-off analysis, **port-level docstring drafts only**, and the **Task Decomposition** section (flat list of tasks with ID, scope, AC, dependencies).
+1. **architect** → produces design artifacts in **every bounded-context directory the feature touches**:
+   - For each bounded context, creates or updates `docs/design/<bounded-context>/` with: clarified requirements, bounded context summary, use case list, port signatures (each annotated with placement layer), error type hierarchy, trade-off analysis, **port-level docstring drafts only**, and the **Task Decomposition** section (flat list of tasks with ID, scope, AC, dependencies, scoped to that bounded context). Required Sections from `~/.claude/rules/design-doc-style.md` are satisfied at the directory level — the architect chooses which file inside the directory hosts each section.
+   - Cross-bounded-context references (e.g. `counting` depending on `shared-kernel`'s `Clock`) point to the other directory via relative Markdown links instead of duplicating the design.
    - Does NOT create any file under `docs/pr/`. Does NOT draft entity/use-case docstrings. Does NOT decide PR aggregation. Does NOT write implementation code.
 2. **Task Plan Report** → the main conversation reports the task list to the user (task IDs, scope summaries, dependencies, recommended order). Proceed directly to Phase 2 UNLESS `architect` explicitly flags ambiguity (multiple plausible decompositions, unclear ordering, sensitive boundary) — in which case wait for explicit user feedback. The user may always intervene to revise the plan, but the default path no longer pauses.
 
@@ -102,7 +116,7 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
 
 For each task in dependency order (or in parallel when dependencies allow):
 
-1. **developer** → implements the current task via TDD. Reads `docs/design/<feature>.md` (whole-feature context) AND the task's entry in the Task Decomposition section. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings per `~/.claude/rules/docstrings.md`; for ports, transcribes the architect's draft and refines it. Reports the modified file list AND any deviation from the design with rationale. Does NOT touch any PR document.
+1. **developer** → implements the current task via TDD. Reads `docs/design/<bounded-context>/` for the bounded context that owns the task (whole-context view) AND the task's entry in the Task Decomposition section, plus any cross-context dependencies the task references via relative links. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings per `~/.claude/rules/docstrings.md`; for ports, transcribes the architect's draft and refines it. Reports the modified file list AND any deviation from the design with rationale. Does NOT touch any PR document.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence (boundary = the task entry in the design doc). Findings route to `developer`. Returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
 3. **Task fix loop** — if `code-reviewer` returns any 🔴 blocker, OR any 🟡 suggestion the user has not explicitly deferred, re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain and all non-deferred 🟡 are addressed. The task is then complete and pending aggregation.
 
@@ -118,8 +132,8 @@ The main conversation decides when to bundle one or more completed (task-fix-loo
 
 For each aggregation:
 
-1. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads `docs/design/<feature>.md`, the list of tasks in this aggregation (their entries from the Task Decomposition section), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. Reports the file path and any mismatch surfaced during self-check.
-2. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the bundled task list, the cumulative diff, and `docs/design/<feature>.md`). Findings route to `pr-writer` (prose), `architect` (design drift / task-list drift), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
+1. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads **every bounded-context directory the bundled tasks touch** (`docs/design/<bounded-context>/`), the list of tasks in this aggregation (their entries from the Task Decomposition sections), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. The 関連ドキュメント section lists every bounded-context directory referenced. Reports the file path and any mismatch surfaced during self-check.
+2. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the bundled task list, the cumulative diff, and **every bounded-context directory the bundled tasks touch**). Findings route to `pr-writer` (prose), `architect` (design drift / task-list drift in any bounded-context directory), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
 3. **PR fix loop** — re-invoke whichever agent owns the change and re-run `pr-reviewer` until zero 🔴 remain and all non-deferred 🟡 are addressed. If `architect` revises the Task Decomposition during this loop (because the implementation deviated from the design in a way that requires the design to be updated), re-run `pr-reviewer` after the design update.
 4. The aggregation is then ready for the user to review and merge. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
 
@@ -141,7 +155,7 @@ A development task is NOT complete until every item below is true. The `develope
 
 On the Lightweight Path (Path B) the design / PR-document items are skipped — see "Lightweight Path (Path B)" above for the reduced checklist.
 
-1. **Design artifacts exist**: `docs/design/<feature>.md` written/updated with clarified requirements, acceptance criteria, port-level docstring drafts, and a Task Decomposition section. ADRs created when applicable.
+1. **Design artifacts exist**: For every bounded context the change touches, `docs/design/<bounded-context>/` is written/updated with clarified requirements, acceptance criteria, port-level docstring drafts, and a Task Decomposition section. Required Sections from `~/.claude/rules/design-doc-style.md` are satisfied at the directory level (each bounded-context directory contains a `README.md` as entry point). ADRs created when applicable.
 1a. **Task plan reported**: The task list (IDs, scope summaries, dependencies, order) has been reported to the user. User approval is required only when `architect` flagged decomposition ambiguity.
 1b. **PR documents exist per aggregation**: For each aggregation triggered in Phase 3, `docs/pr/<feature>/<N>-<aggregation>.md` exists and is fully populated by `pr-writer` (all sections — there is no `architect`-pre-filled portion). Style compliance against `~/.claude/rules/pr-style.md` and factual consistency against the bundled task list, the cumulative diff, and the design document are confirmed by `pr-reviewer`.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
@@ -163,7 +177,7 @@ Adding a new external library/crate/package requires explicit approval. No agent
    - Health check results: last release date, commit activity, GitHub stars, maintainer count, license, known CVEs
    - Impact on build time / binary size / transitive dependency count (if significant)
 3. **User approval**: Wait for explicit user approval before modifying `Cargo.toml` / `package.json` / `pyproject.toml` / etc. Silent dependency additions are prohibited.
-4. **Record**: Once approved, record the rationale in the relevant `docs/design/<feature>.md` or as a dedicated ADR if the choice is load-bearing.
+4. **Record**: Once approved, record the rationale in the relevant `docs/design/<bounded-context>/` directory (typically the bounded context that introduces the dependency), or as a dedicated ADR if the choice is load-bearing across multiple bounded contexts.
 5. **Review enforcement**: The `code-reviewer` agent MUST flag any dependency change not accompanied by an approval record as a 🔴 blocker.
 
 ## Git Operations

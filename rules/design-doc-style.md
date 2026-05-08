@@ -1,11 +1,11 @@
 ---
 name: design-doc-style
-description: Authoritative style rules for every section of docs/design/<feature>.md. Owned by architect; self-graded against the Severity Matrix at the bottom. Independent of pr-style.md; conflicts resolved per Precedence.
+description: Authoritative style rules for every file under docs/design/<bounded-context>/. Owned by architect; self-graded against the Severity Matrix at the bottom. Independent of pr-style.md; conflicts resolved per Precedence.
 ---
 
 # Design Document Style Rules
 
-Single source of truth for the visual and structural style of `docs/design/<feature>.md`. `architect` writes the document and self-checks against the Severity Matrix at the bottom before declaring the design phase done. A future design-reviewer agent grades against the same matrix.
+Single source of truth for the visual and structural style of `docs/design/<bounded-context>/` directories. `architect` writes the documents and self-checks against the Severity Matrix at the bottom before declaring the design phase done. A future design-reviewer agent grades against the same matrix.
 
 ## Precedence
 
@@ -15,7 +15,11 @@ This file is **independent of** `~/.claude/rules/pr-style.md`. The two address d
 
 ## Scope
 
-Applies to `docs/design/<feature>.md` (one file per feature). Per `~/.claude/CLAUDE.md`, the design document is wholly architect-owned and is created in Phase 1 of the Orchestration Loop. Updates during Phase 2 / Phase 3 (when implementation reveals design drift) are also bound by this file.
+Applies to every Markdown file inside `docs/design/<bounded-context>/` directories. Per `~/.claude/CLAUDE.md` "Documentation directory layout", design docs are organized **by bounded context** (one directory per bounded context, including cross-cutting layers like `shared-kernel` and `infrastructure`). The design directory is wholly architect-owned and is created/updated in Phase 1 of the Orchestration Loop. Updates during Phase 2 / Phase 3 (when implementation reveals design drift) are also bound by this file.
+
+Internal file splitting inside a bounded-context directory is at the architect's discretion. Small bounded contexts may keep everything in `README.md`; larger ones split per topic. Required Sections (below) are satisfied **at the directory level** — every required section must be present somewhere in the directory, but architect chooses which file hosts it. Cross-bounded-context references use relative Markdown links (e.g. `../shared-kernel/README.md`) instead of duplicating content.
+
+Each bounded-context directory MUST contain a `README.md` that serves as the entry point — background, scope summary, dependency edges to other bounded-context directories, and a table of contents pointing to internal files.
 
 ADR files (`docs/adr/<NNNN>-<title>.md`) are NOT covered here; ADRs follow their own short template (Status / Context / Decision / Consequences) per `~/.claude/agents/architect.md`.
 
@@ -50,12 +54,12 @@ Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / cons
 
 ## Required Sections (in order)
 
-The design document MUST include the following top-level (`##`) sections in this order. **必須** sections are always required; **任意** sections are included only when the feature actually exercises them.
+The bounded-context directory MUST include the following top-level (`##`) sections in this order, **across the directory's files as a whole**. The architect chooses which file hosts each section: small directories may keep everything in `README.md`; larger directories split per topic. The order constraint applies to the canonical reading sequence — when a reader follows the `README.md`'s table of contents, sections should appear in this order. **必須** sections are always required; **任意** sections are included only when the bounded context actually exercises them.
 
 1. **背景・目的** (必須). Why this feature exists; the user-facing capability it delivers.
 2. **要件整理** (必須). Clarified requirements per `~/.claude/agents/architect.md` "Requirements clarification". Sub-sections: 関係者 / 入出力 / エラー・境界条件 / 受け入れ基準 / データライフサイクル / 連携 / 依存追加候補.
 3. **用語** (新規ドメイン用語が 3 つ以上現れる場合は必須). Glossary mapping each new domain term to a one-sentence definition.
-4. **Bounded Context** (必須). Which domain crate hosts the feature, and the dependency graph rule consulted in `~/.claude/rules/architecture.md`.
+4. **Bounded Context** (必須). Which domain crate hosts this bounded context, and which other bounded contexts it depends on. For cross-cutting layers (`shared-kernel`, `infrastructure`), describe the role they play and which bounded-context directories reference them. Cite the dependency graph rule consulted in `~/.claude/rules/architecture.md`.
 5. **Use Case 一覧** (必須). Each use case as `### UC-<N>: <name>` with input / output / error variants.
 6. **Port 一覧** (新規 port を導入する場合は必須). Each port with signature, placement layer (Entity / Use Case), and citation to the placement judgement table in `architecture.md`.
 7. **エラー型階層** (必須). Per-layer error types (DomainError in Entities, UseCaseError in Use Cases) and the wrapping relationship.
