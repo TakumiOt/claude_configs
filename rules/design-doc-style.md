@@ -121,7 +121,9 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 
 ### タスク分解
 
-- Format defined verbatim in `~/.claude/agents/architect.md` "Task Decomposition" → "Required Section in the Design Document". This file does not duplicate it.
+- Rendered as a **Markdown table** (`| ID | スコープ | 受け入れ基準 | 依存タスク |`) with one row per task. Multiple AC entries within a cell are separated by `<br>`.
+- Column definitions and worked example live in `~/.claude/agents/architect.md` "Task Decomposition" → "Required Section in the Design Document". This file does not duplicate them.
+- Do NOT render tasks as `### T-N` subsections with bullet bodies; the table is the required shape.
 
 ### 関連 ADR
 
@@ -142,6 +144,7 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 | Enumeration of 2+ items written as prose instead of a bulleted list | 🔴 |
 | Multiple sentences on a single line without `  ` hard-break | 🔴 |
 | 用語 list rendered as bullets instead of a Markdown table | 🟡 |
+| タスク分解 rendered as `### T-N` subsections / bullets instead of a Markdown table | 🟡 |
 | トレードオフ presents options as one prose paragraph instead of `#### 案 <N>` subsections | 🟡 |
 | Coined kanji compound (`依存集約点`, `組み立て中枢`) instead of a verb phrase or backticked English | 🟡 |
 | Direct-translation calque (「〜することが可能」「〜が行われる」「〜の導入を実施した」) | 🟡 |

@@ -160,31 +160,26 @@ If a proposed task clearly breaches these signals, split it before listing it. T
 
 ### Required Section in the Design Document
 
-Add a **「タスク分解」** section to `docs/design/<feature>.md` listing every task. Each task is a flat entry with ID, scope, AC, and dependencies — no PR-level grouping is required (aggregation is the orchestrator's call).
+Add a **「タスク分解」** section to `docs/design/<feature>.md` rendered as a **Markdown table**, with one row per task. Each row carries ID, scope, acceptance criteria, and dependencies — no PR-level grouping is required (aggregation is the orchestrator's call). The table format keeps the whole task plan scannable on a single screen and is the canonical shape `developer`, `code-reviewer`, `pr-writer`, and `pr-reviewer` consume.
 
 ```markdown
 ## タスク分解
 
-### T-1: <task-name>
-- **スコープ**: 〜〜の port を定義する / 〜〜ユースケースの happy path を実装する。
-- **受け入れ基準**:
-  - AC-1-1: 〜〜できること
-- **依存タスク**: なし
-
-### T-2: <task-name>
-- **スコープ**: 〜〜の repository 実装を追加する。
-- **受け入れ基準**:
-  - AC-2-1: 〜〜
-  - AC-2-2: 〜〜のときエラー `Foo` を返すこと
-- **依存タスク**: T-1
-
-### T-3: <task-name>
-- **スコープ**: ...
-- **受け入れ基準**: ...
-- **依存タスク**: T-1
+| ID | スコープ | 受け入れ基準 | 依存タスク |
+|---|---|---|---|
+| T-1 | 〜〜の port を定義する | AC-1-1: 〜〜できること | なし |
+| T-2 | 〜〜の repository 実装を追加する | AC-2-1: 〜〜<br>AC-2-2: 〜〜のときエラー `Foo` を返すこと | T-1 |
+| T-3 | 〜〜ユースケースの happy path を実装する | AC-3-1: 〜〜<br>AC-3-2: 〜〜 | T-1 |
 ```
 
-AC IDs are scoped to their task (`AC-<task>-<n>`) so they remain stable as tasks are added/removed and so `pr-writer` can quote them when composing 受け入れ基準 in the eventual PR document.
+Column rules:
+
+- **ID** — `T-<N>` sequential. The number defines the canonical reference used in invocation prompts and review hand-offs.
+- **スコープ** — one sentence summarizing the single conceptual change. If you find yourself writing "and also", split the task into two rows.
+- **受け入れ基準** — one or more `AC-<task>-<n>: <criterion>` entries. Multiple criteria are separated by `<br>` so each AC keeps its own visual line within the cell. AC IDs are scoped to their task so they remain stable as tasks are added or removed and so `pr-writer` can quote them when composing 受け入れ基準 in the eventual PR document.
+- **依存タスク** — comma-separated task IDs (e.g., `T-1, T-2`), or `なし` when the task is independent.
+
+Do NOT render tasks as `### T-N` subsections with bullet bodies — the table is the required shape. If a task genuinely needs prose elaboration (rare), keep the table row authoritative and add a short note in a separate paragraph below the table referencing the row by ID.
 
 ### Report the Task Plan and Hand Off
 
