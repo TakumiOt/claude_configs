@@ -1,143 +1,133 @@
 ---
 name: pr-style
-description: Authoritative style rules for every section of docs/pr/<feature>/<slice>.md. Owned jointly by architect (scope sections) and pr-writer (prose sections); enforced by pr-reviewer.
+description: Authoritative style rules for every section of docs/pr/<feature>/<N>-<aggregation>.md. Wholly pr-writer-owned (architect does not pre-fill anything); enforced by pr-reviewer.
 ---
 
 # PR Document Style Rules
 
-This file is the single source of truth for the visual and structural style of `docs/pr/<feature>/<slice>.md`. Every agent that reads, writes, or reviews a PR document MUST follow the rules below.
+Single source of truth for the style of `docs/pr/<feature>/<N>-<aggregation>.md`. `pr-writer` writes the document; `pr-reviewer` enforces these rules via the Severity Matrix at the bottom.
 
 ## Precedence
 
-On conflict with style-related wording elsewhere, this file wins:
-
-- Wins over style sections in `~/.claude/agents/architect.md`, `~/.claude/agents/pr-writer.md`, and `~/.claude/agents/pr-reviewer.md`.
-- Loses to agent-specific responsibilities (who fills which section, workflow ordering). Those live in the agent files and are out of scope here.
+This file wins over style sections in `~/.claude/agents/pr-writer.md` and `~/.claude/agents/pr-reviewer.md`. It loses to agent-specific responsibilities (who reads what, workflow ordering) — those live in the agent files.
 
 ## Scope
 
-Applies to every section, regardless of which agent authors it:
-
-- **architect-owned sections**: 背景・目的, スコープ, 受け入れ基準, 依存スライス, 関連ドキュメント.
-- **pr-writer-owned sections**: 変更内容, 設計からの変更点, テスト, 影響範囲・注意点.
-
-Section ownership (who fills what, when) is defined in the agent files; this rule governs *how* each section must read.
+Applies to all sections: 背景・目的, スコープ, 受け入れ基準, 依存PR, 関連ドキュメント, 変更内容, 設計からの変更点, テスト, 影響範囲・注意点. The PR document is wholly pr-writer-owned and is created from scratch at aggregation time per `~/.claude/CLAUDE.md` Phase 3.
 
 ## Language
 
-- Document body: Japanese.
-- Code identifiers, file paths, type names, snippets: native form (English / project-native).
-- This rule file itself: English.
+- Document body: Japanese. Code identifiers, file paths, type names, snippets: native form in backticks.
+- No JP/EN code-mixing, no forced kanji translations of industry-standard katakana, no coined kanji compounds, no direct-translation calques. Full rule and substitutions in `~/.claude/CLAUDE.md` "Language & Documentation Policy".
+- This rule file: English (per `~/.claude/CLAUDE.md` Rules Directory Governance §6).
 
 ## Core Rule: Bullets First
 
-**Bullets are the default and dominant format for every section. Prose is the exception, not the rule.**
+**Bullets are the default and dominant format. Prose is the exception.**
 
 Prose is permitted ONLY for:
 
-1. A single short lead-in sentence that frames a bullet list.
-2. A section body whose total content is one short sentence (splitting into a single bullet would be silly).
-3. The single canonical "no deviation" line of `設計からの変更点` (`設計書のとおり実装。変更なし。`).
+1. A single short lead-in sentence framing a bullet list.
+2. A section body whose total content is one short sentence.
+3. The single canonical "no deviation" line of `設計からの変更点`.
 
-Prose is PROHIBITED for:
-
-- Enumerating two or more items. Two items joined by "、" / "および" / "/" in one sentence is a bulleted list written wrong.
-- Walking through reasons, consequences, or edge cases in paragraph form. Each reason / consequence / edge case is its own bullet.
-- Narrative transitions between bullet groups. If two bullet groups belong together, nest them; if not, separate with a blank line.
-- Closing a bullet list with a prose paragraph. The bullets are the content; no wrap-up is needed.
-
-If a section currently reads as multiple consecutive paragraphs, convert each paragraph's core assertion into a bullet and delete the narrative glue.
+Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / consequences / edge cases in paragraph form, narrative transitions between bullet groups, closing a bullet list with a wrap-up paragraph.
 
 ## Formatting Constraints
 
-- **One sentence per line with Markdown hard break**. End each sentence (whether inside a bullet or in a prose lead-in) with `。` followed by **two trailing spaces** and a newline. The two trailing spaces are the Markdown hard-break syntax — without them, consecutive lines render as a single paragraph. The last sentence before a blank line does NOT need trailing spaces.
-- **Sentence length: aim for ~80 characters**. This is a guideline for readability, not a hard limit — `pr-reviewer` does not flag sentences that exceed it. When a sentence keeps growing well past this length, prefer splitting it or converting it to a bulleted list, but do not contort the wording to hit the count exactly.
-- **One bullet = one sentence**. If a bullet needs more context, split it into a parent bullet + sub-bullets — never pack multiple sentences into one bullet.
-- **Sub-bullets at most 2 levels deep**. Deeper nesting means the content belongs elsewhere or needs its own section.
+- **One sentence per line, Markdown hard break**: end each sentence with `。` + two trailing spaces + newline. The last sentence before a blank line does not need trailing spaces.
+- **Sentence length**: aim for ~120 characters. Guideline only — not flagged by `pr-reviewer`.
+- **One bullet = one sentence**. If a bullet needs more context, split it into a parent + sub-bullets — never pack multiple sentences into one bullet.
+- **Bullets lead with role, not name**. The grammatical subject of every top-level bullet MUST be a role / behavior / change in plain language — not a code identifier (file path, function, type, crate, module, env-var). Code identifiers go in parentheses after the role descriptor. Sub-bullets MAY use code identifiers as subjects when the parent bullet has already established the role.
+  - Bad: `crates/legacy/` を新設し、〜〜を移設した。
+  - Good: 既存コードを丸ごと隔離する過渡的な置き場を新設した (`crates/legacy/`)。
+- **Hoist enumerations of related identifiers into sub-bullets**. Trigger: parenthetical reaches 3+ identifiers, OR spans 2+ categories, OR makes the parent sentence hard to read in one pass. List each category as its own sub-bullet under a role-led parent.
+- **Use `###` sub-headings for sections with 3+ thematic groups**. Lead-in sentences are acceptable for 1–2 groups. Maximum heading depth: `####` (h4); deeper signals the section should split.
 - **Blank line between distinct ideas, not between bullets of the same list**.
+
+Worked examples for "lead with role" and "group by concept" live in `~/.claude/agents/pr-writer.md` "Concrete Examples".
 
 ## Per-Section Style
 
-### 背景・目的 (architect)
+Every section follows the Formatting Constraints above. Section-specific rules below.
+
+### 背景・目的
 
 - Short. At most 3 bullets or one 2–3 sentence paragraph.
-- Do NOT duplicate the design document. Link to it instead.
+- Do NOT duplicate the design document. Link to it.
 
-### スコープ (architect)
+### スコープ
 
-- Bulleted list of behaviors this slice delivers.
-- Each bullet describes an observable behavior or a structural change reachable from the adapter boundary.
-- File names may appear inside a bullet when they anchor the change; the bullet's subject is the change, not the file.
+- Bullets describing observable behaviors / structural changes the PR ships.
+- Composed from the union of the bundled tasks' スコープ entries — do not invent items, do not silently absorb implementation drift.
 
-### 受け入れ基準 (architect)
+### 受け入れ基準
 
-- Bulleted list, each bullet starting with `AC-N: `.
-- One acceptance criterion per bullet. Measurable and verifiable.
+- Bullets prefixed `AC-N: ` (or task-scoped `AC-<task>-<n>:`). One AC per bullet, measurable and verifiable.
+- Sourced verbatim from the bundled tasks' 受け入れ基準 entries.
 
-### 依存スライス (architect)
+### 依存PR
 
-- Bulleted list of prerequisite slices, or the single line `なし` if none.
-- Conditions that are not prerequisite slices (e.g., "Tailwind 依存追加のユーザー承認") go on their own bullet prefixed `前提条件: `.
+- Bullets of relative paths to prerequisite PR files, or `なし`. Inferred from the bundled tasks' `依存タスク` entries.
+- Non-PR conditions go on their own bullet prefixed `前提条件: `.
 
-### 関連ドキュメント (architect)
+### 関連ドキュメント
 
-- Bulleted list of relative Markdown links.
-- Never absolute paths.
+- Bullets of relative Markdown links. Always include the design doc; add ADRs the bundled tasks reference. Never absolute paths.
 
-### 変更内容 (pr-writer)
+### 変更内容
 
-- Feature-level summary as bullets, grouped by conceptual piece of the change.
-- Each group may have an optional one-sentence lead-in, followed by bullets.
-- Do NOT write one bullet per modified file — group by concept. File names appear inside bullets when they anchor a change.
-- Do NOT close the section with a prose paragraph.
+- Feature-level summary, grouped by conceptual piece. Use `###` per group when 3+ groups exist.
+- Apply "lead with role" and "hoist enumerations". Bullets reading like `<file path> を <verb>` are the most common smell — rewrite to lead with role.
+- Do NOT enumerate one bullet per modified file. Do NOT close with a prose paragraph.
 
-### 設計からの変更点 (pr-writer)
+### 設計からの変更点
 
-- If the implementation followed the design, the entire section is the single line `設計書のとおり実装。変更なし。`
-- If it deviated, each deviation is a parent bullet naming the deviation. Sub-bullets cover:
-  - the reason the deviation was necessary, and
-  - the effect on subsequent slices / acceptance criteria (if any).
-- Do NOT write deviations as prose paragraphs.
+- If the implementation followed the design exactly, the entire section is the single line `設計書のとおり実装。変更なし。`
+- If it deviated, each deviation is a parent bullet naming the deviation. Sub-bullets cover the reason and the downstream effect on subsequent tasks / PRs.
+- When 3+ deviations exist, promote each to `###`.
 
-### テスト (pr-writer)
+### テスト
 
-- Behavioral themes as parent bullets; scenarios / edge cases as sub-bullets.
-- Never list test function names paired with AC IDs. The section describes coverage intent, not the test runner's output.
-- If AC traceability is useful, reference it as one compact trailing line (e.g., `（対応する Acceptance Criteria: AC-M2 〜 AC-M10）`).
-- If no tests were added, state the reason in a single sentence, then list the verification substitutes (lint, build, manual check) as bullets.
+- **Default format: a Markdown table** with columns **層 (or 種別) | テーマ | 主なケース**.
+  - 層 / 種別: domain unit / infrastructure / integration / contract / E2E / manual など、テスト基盤ごとの粒度。
+  - テーマ: 行の振る舞い主題 (例: 「認証ユースケース」, 「永続化ラウンドトリップ」)。
+  - 主なケース: シナリオ・境界条件をセル内で `/` 区切りで列挙。
+- Additional columns (場所, 対応 AC) only when the value varies meaningfully across rows.
+- Bullets are acceptable when the section has only 1–2 themes. No tests added → state the reason in one sentence, then list verification substitutes (lint / build / manual) as bullets.
+- When tests group into clearly distinct categories that don't fit one table, use `###` per category, each with its own table or bullet block.
+- Never list test function names — describes coverage intent, not test runner output.
+- AC traceability: one compact trailing line below the table (e.g., `（対応する Acceptance Criteria: AC-M2 〜 AC-M10）`).
 
-### 影響範囲・注意点 (pr-writer)
+### 影響範囲・注意点
 
-- Bulleted list of reader-actionable items: breaking changes, required config updates, data migrations, deployment ordering, operational cautions.
-- Each concern is a parent bullet; rationale / details go in sub-bullets when needed.
-- Do NOT write concerns as prose paragraphs.
-- Skip trivia the reader infers from the change itself.
-
-## Anti-Patterns
-
-- Multiple sentences packed on one line separated only by `。` (breaks per-sentence diff readability).
-- Narrative paragraphs where bullets would do.
-- A bullet containing three or more sentences (split it or add sub-bullets).
-- Enumeration expressed as one sentence joined by `、` / `および` / `/`.
-- File-by-file enumeration in 変更内容.
-- Test function names as the primary content of テスト.
-- Padding 設計からの変更点 with narrative when there is no deviation.
-- Closing prose paragraph after a bullet list ("上記により〜〜となる。" etc.).
+- Bullets of reader-actionable items: breaking changes, config updates, data migrations, deployment ordering, operational cautions.
+- Each concern is a parent bullet; rationale / details go in sub-bullets.
+- When concerns span 3+ categories, promote each to `###`.
+- Do NOT write concerns as prose paragraphs. Skip trivia the reader infers from the change itself.
 
 ## Severity Matrix
 
-`pr-reviewer` uses this matrix when grading PR document style and factual consistency. Findings are routed to `pr-writer` (pr-writer-owned sections), `architect` (architect-owned sections), or `developer` (when the implementation itself is out of scope) per the hand-off rules in `~/.claude/agents/pr-reviewer.md`.
+`pr-reviewer` uses this matrix when grading. Style findings always route to `pr-writer` (the document is wholly pr-writer-owned). Factual-consistency findings route to `pr-writer` (prose mismatch), `architect` (design-doc drift requiring Task Decomposition revision), or `developer` (implementation outside the bundled tasks' scope), per hand-off rules in `~/.claude/agents/pr-reviewer.md`.
 
 | Observation | Severity |
-|-------------|----------|
-| Enumeration of two or more items written as prose instead of a bulleted list | 🔴 blocker |
-| Prose paragraph where a bulleted list is required by Per-Section Style | 🔴 blocker |
-| Multiple sentences on a single line without the `  ` hard-break | 🔴 blocker |
-| File-by-file enumeration in 変更内容 | 🔴 blocker |
-| Test function names as the primary content of テスト | 🔴 blocker |
-| `設計からの変更点` padded with narrative when there is no actual deviation | 🔴 blocker |
-| Closing prose paragraph appended after a bullet list | 🟡 suggestion |
-| Bullet containing three or more sentences without being split | 🟡 suggestion |
-| Sub-bullets nested deeper than 2 levels | 🟡 suggestion |
-| Lead-in sentence longer than one sentence | 💭 nit |
-| Minor wording inconsistencies between parallel bullets | 💭 nit |
+|---|---|
+| Enumeration of 2+ items written as prose instead of a bulleted list | 🔴 |
+| Prose paragraph where Per-Section Style requires bullets | 🔴 |
+| Multiple sentences on a single line without `  ` hard-break | 🔴 |
+| File-by-file enumeration in 変更内容 | 🔴 |
+| Test function names as the primary content of テスト | 🔴 |
+| `設計からの変更点` padded with narrative when there is no actual deviation | 🔴 |
+| `テスト` with 3+ themes uses bullets instead of a Markdown table | 🟡 |
+| Section with 3+ thematic groups uses prose lead-ins instead of `###` sub-headings | 🟡 |
+| Heading depth deeper than `####` (h4) | 🟡 |
+| Top-level bullet whose subject is a code identifier instead of a role / behavior | 🟡 |
+| Parenthetical packing 3+ related identifiers (or 2+ categories) instead of sub-bullets | 🟡 |
+| English noun phrase in Japanese prose where natural Japanese exists (outside backticks) | 🟡 |
+| Forced kanji translation of an industry-standard katakana term (`接続点` for `port`, etc.) | 🟡 |
+| Coined kanji compound (`依存集約点`, `組み立て中枢`) instead of a verb phrase or backticked English | 🟡 |
+| Direct-translation calque (「〜することが可能」「〜が行われる」「〜の導入を実施した」) | 🟡 |
+| Bullet with 3+ sentences without being split | 🟡 |
+| Closing prose paragraph after a bullet list | 🟡 |
+| Lead-in sentence longer than one sentence | 💭 |
+| Minor wording inconsistencies between parallel bullets | 💭 |

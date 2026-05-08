@@ -15,9 +15,9 @@ Rust projects in this team use a Cargo **workspace split by bounded context**. T
 
 ### Per-crate rules
 
-- **Library by default**: every workspace crate exposes a `src/lib.rs`. Domain crates, `shared-kernel`, `infrastructure`, and `integration-tests` are library-only and have no `src/main.rs` or `src/bin/*.rs`.
+- **Library by default**: every workspace crate exposes a `src/lib.rs`. Domain crates, `shared-kernel`, `infrastructure`, and `test-integration` are library-only and have no `src/main.rs` or `src/bin/*.rs`.
 - **Binaries live in `app` only**: only the `app` crate ships executables. Place each binary entry point under `app/src/bin/<name>.rs` and keep the file as a thin shim — parse arguments, build the composition root by calling into `app`'s library, translate errors to exit codes. No business logic.
-  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Splitting `app` into `app/src/lib.rs` + `app/src/bin/*.rs` makes the composition root reachable from both the binary and the `integration-tests` crate.
+  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Splitting `app` into `app/src/lib.rs` + `app/src/bin/*.rs` makes the composition root reachable from both the binary and the `test-integration` crate.
 - **Workspace-root `Cargo.toml`** is a virtual workspace: it declares `[workspace]` with the crate `members` list and shared `[workspace.dependencies]` / `[workspace.package]`, but no `[package]` of its own.
 
 `code-reviewer` MUST flag the following as 🔴 blockers:
@@ -30,17 +30,18 @@ Rust projects in this team use a Cargo **workspace split by bounded context**. T
 
 This section refines the Testing rules from the global `CLAUDE.md` for Rust. BDD with the Detroit (classicist) school of TDD still applies — test real collaborators, mock only at architectural boundaries, verify state and output rather than interactions.
 
-### Layout (workspace + integration-tests crate)
+### Layout (workspace + test-integration crate)
 
 - **Unit tests**: Co-located in the same file as the code under test, inside a `#[cfg(test)] mod tests { ... }` block. Scope is limited to the module's internals, including private items. Lives **inside the same crate** as the code under test (typically a domain crate, `shared-kernel`, or `infrastructure`).
-- **Integration tests and E2E tests**: ALL integration and end-to-end tests live in the dedicated **`integration-tests` crate** at the workspace root. Each `.rs` file under `integration-tests/tests/` is compiled as a separate test binary and may exercise the public APIs of the domain crates, the `infrastructure` crate, and the `app` crate via injected ports / composition.
+- **Integration tests and E2E tests**: ALL integration and end-to-end tests live in the dedicated **`test-integration` crate** at the workspace root. Each `.rs` file under `test-integration/tests/` is compiled as a separate test binary and may exercise the public APIs of the domain crates, the `infrastructure` crate, and the `app` crate via injected ports / composition.
   - Do NOT create a `tests/` directory inside any domain crate, `shared-kernel`, or `infrastructure`. Those crates have unit tests only.
   - Do NOT place integration tests inside `src/` or inside `#[cfg(test)]` modules.
   - Do NOT test private items from integration tests — if coverage is missing, the API surface is wrong, not the test location.
-  - Shared helpers (DB setup, fixtures, builders, test-only HTTP clients) live in `integration-tests/src/lib.rs` (the crate's library entry). Each test file imports them with `use integration_tests::...;`. The legacy `tests/common/mod.rs` pattern is not used here — the crate's own `lib.rs` already provides a stable home for helpers.
+  - Shared helpers (DB setup, fixtures, builders, test-only HTTP clients) live in `test-integration/src/lib.rs` (the crate's library entry). Each test file imports them with `use test_integration::...;`. The legacy `tests/common/mod.rs` pattern is not used here — the crate's own `lib.rs` already provides a stable home for helpers.
+- **Test-support crate naming**: When a workspace adds further test-support crates beyond `test-integration` (e.g. a contract-test harness or a shared DB-fixture crate), every such crate MUST use the `test-*` prefix (`test-contract`, `test-db`, ...). The shared prefix keeps test-support crates grouped together in alphabetical workspace listings and signals their non-production role at a glance.
 - **Doc tests**: Use for small, illustrative examples on public items. Do not rely on doc tests as the primary coverage mechanism.
 
-### Why a single integration-tests crate
+### Why a single test-integration crate
 
 - Real persistence / HTTP-client implementations live in `infrastructure`. Concentrating tests that wire `infrastructure` against domain ports in one crate keeps DB setup / teardown, transaction management, and fixture loading in one place.
 - Cross-domain scenarios have a natural home: this crate is the only place that depends on multiple domain crates plus `infrastructure` and `app`, so end-to-end flows across bounded contexts can be exercised without violating the inter-domain "no direct dependency" rule at the production layer.
@@ -48,8 +49,8 @@ This section refines the Testing rules from the global `CLAUDE.md` for Rust. BDD
 
 `code-reviewer` MUST flag any of the following as 🔴 blockers:
 
-- An integration / E2E test placed anywhere outside the `integration-tests` crate.
-- A `tests/` directory created inside any non-`integration-tests` workspace crate.
+- An integration / E2E test placed anywhere outside the `test-integration` crate.
+- A `tests/` directory created inside any non-`test-integration` workspace crate.
 
 ## Task Runner
 

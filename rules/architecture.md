@@ -168,11 +168,13 @@ crates/
 ├── app/                           # composition root (binary)
 │   ├── Cargo.toml                 # depends on every crate above
 │   └── src/{lib.rs, bin/<name>.rs}
-└── integration-tests/             # cross-crate integration / E2E tests
+└── test-integration/              # cross-crate integration / E2E tests
     ├── Cargo.toml                 # depends on every domain crate + infrastructure + app
     ├── src/lib.rs                 # shared test helpers (DB setup, fixtures)
     └── tests/                     # integration / E2E test bodies (see rust.md "Test Layout")
 ```
+
+**Test-support crate naming**: When a workspace contains more than one test-support crate (e.g. an integration-test harness alongside a contract-test harness or a shared DB-fixture crate), use the **`test-*` prefix** consistently — `test-integration`, `test-contract`, `test-db`, etc. The shared prefix groups them together in alphabetical workspace listings and signals their non-production role at a glance. A single test-support crate may use any name, but as soon as a second one is added the prefix becomes mandatory and existing crates MUST be renamed for consistency.
 
 ### Dependency direction (workspace level)
 
@@ -182,7 +184,7 @@ The compiler enforces this graph through each crate's `Cargo.toml` `[dependencie
 - `<domain-*>` — depends only on `shared-kernel`. **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
 - `infrastructure` — depends on every domain crate and `shared-kernel`. It implements each domain's Repository / Gateway ports so all DB and external-IO concerns live here.
 - `app` — depends on every crate. Wires the composition root, builds the Axum `Router`, owns binary entry points.
-- `integration-tests` — depends on every domain crate, `infrastructure`, and `app`. It exists only as a test harness.
+- `test-integration` — depends on every domain crate, `infrastructure`, and `app`. It exists only as a test harness.
 
 ### Adapter placement
 
@@ -194,7 +196,7 @@ A use case that touches multiple bounded contexts (e.g. "place order" reaching i
 
 ### Single-domain projects
 
-If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app`, and `integration-tests`. Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
+If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app`, and `test-integration`. Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
 
 ### Structure review checklist
 
@@ -205,7 +207,8 @@ If the project genuinely has one bounded context, the workspace structure still 
 - [ ] Persistence and external-IO implementations live in the `infrastructure` crate; no domain crate contains DB pool / HTTP-client wiring.
 - [ ] Each domain crate's source layout uses `domain/` / `usecase/` / `adapter/` modules; the inward-only direction is preserved within the crate via module visibility (`pub(crate)` and narrower).
 - [ ] Cross-domain use cases live in the central domain's `usecase/` module and reach other domains only through Gateway ports.
-- [ ] Integration / E2E tests live in the `integration-tests` crate (see `rust.md` "Test Layout"), not in any domain crate's `tests/`.
+- [ ] Integration / E2E tests live in the `test-integration` crate (see `rust.md` "Test Layout"), not in any domain crate's `tests/`.
+- [ ] When the workspace has more than one test-support crate, every such crate uses the `test-*` prefix.
 
 ---
 
