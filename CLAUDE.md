@@ -197,6 +197,7 @@ Detailed rules live in external files so this document stays short. All agents (
 - **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
 - **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
 - **PR style** (every task that touches `docs/pr/**`): `~/.claude/rules/pr-style.md` — Core Rule (Bullets First), Formatting Constraints, Per-Section Style, and the Severity Matrix used by `pr-reviewer`. Read by `pr-writer` (composition) and `pr-reviewer` (enforcement).
+- **Design doc style** (every task that touches `docs/design/**`): `~/.claude/rules/design-doc-style.md` — Required Sections (in order), Per-Section Style, and a Severity Matrix used by `architect` for self-check. Independent of `pr-style.md`; rules are restated where they appear identical, since the two files address different audiences and lifecycles.
 - **Language** (per project): `~/.claude/rules/<language>.md` — test layout, task runner, error idioms.
   - Rust → `~/.claude/rules/rust.md`
   - (Add a new file per language as needed.)
