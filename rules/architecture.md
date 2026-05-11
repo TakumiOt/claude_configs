@@ -400,7 +400,7 @@ Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer
 
 - Authoritative reference for deciding the layer of Use Cases, ports, and error types.
 - "Interface Placement Rule" and "What Belongs in Each Layer" drive design decisions.
-- When `docs/design/<feature>.md` explains layer structure or port placement, cite the relevant sections of this document.
+- When a `docs/design/<bounded-context>/` directory explains layer structure or port placement, cite the relevant sections of this document.
 
 ### developer
 
