@@ -29,7 +29,7 @@ Every section of the PR document — all of them are now `pr-writer`-owned (背�
 
 1. **Core Rule (Bullets First)** — prose used only where `pr-style.md` explicitly permits it.
 2. **Formatting Constraints** — one sentence per line, two-trailing-space hard break, one-sentence bullets, top-level bullet subjects are roles or behaviors (not code identifiers), parentheticals with 3+ related identifiers hoisted into sub-bullets, sections with 3+ thematic groups use `###` sub-headings (max depth `####`). Sentence length is a guideline (~120 characters), not an enforced limit — do not flag sentences that exceed it.
-3. **Per-Section Style** — each section follows its section-specific rules (e.g., 受け入れ基準 uses `AC-N:` prefix, 設計からの変更点 is either the single canonical line or bulleted deviations, テスト uses a Markdown table when 3+ themes are covered).
+3. **Per-Section Style** — each section follows its section-specific rules (e.g., 受け入れ基準 is grouped under `###` task-scope sub-headings with content-based bullets and **no AC ID prefixes**, 設計からの変更点 is either the single canonical line or bulleted deviations, テスト uses a Markdown table when 3+ themes are covered).
 4. **Japanese prose quality** (per `~/.claude/CLAUDE.md` "Language & Documentation Policy" → "Japanese prose quality"). Verify the four sub-rules:
    - **No JP/EN code-mixing in the body**: English noun phrases outside backticks where natural Japanese exists (e.g., "smell" / "top-level bullet" / "Bad / Good" left untranslated).
    - **Industry-standard katakana terms not forced into kanji**: 「接続点」 instead of 「ポート」, 「仮置き」 instead of 「プレースホルダ」, 「組み立て中枢」 instead of 「コンポジションルート」, etc.
@@ -40,13 +40,13 @@ Use the **Severity Matrix** at the bottom of `pr-style.md` verbatim. Do not weak
 
 ### Axis 2: Factual Consistency (against the implementation)
 
-Regardless of style, every claim in the PR document MUST match reality. Read the actual cumulative diff (`git diff <base>..HEAD`), the test files touched, the bundled task entries in `docs/design/<feature>.md` (cited by ID by the orchestrator), and the design doc as a whole to verify:
+Regardless of style, every claim in the PR document MUST match reality. Read the actual cumulative diff (`git diff <base>..HEAD`), the test files touched, the bundled task entries inside the relevant `docs/design/<bounded-context>/` directory (cited by their scope sentences in the orchestrator's invocation), and the design directory as a whole to verify:
 
 1. **File exists**: `docs/pr/<feature>/<N>-<aggregation>.md` is present with all sections filled. Missing file or empty section → 🔴 blocker (routed to `pr-writer`).
 2. **スコープ matches the bundled task list**: Every bullet in スコープ corresponds to a bundled task's スコープ entry in the design doc, AND is verifiable in the diff. スコープ bullets that no bundled task declared → 🔴 blocker (routed to `pr-writer`); diff content that no bullet covers → 🔴 blocker (also route to `developer` if the implementation went beyond the bundled tasks).
-3. **受け入れ基準 matches the bundled tasks**: Every `AC-N` listed in 受け入れ基準 is sourced from a bundled task's AC entry. Missing AC IDs that the bundled tasks promised → 🔴 blocker (routed to `pr-writer`); invented ACs not in any bundled task → 🔴 blocker (routed to `pr-writer`).
+3. **受け入れ基準 matches the bundled tasks**: Each `###` task-scope heading in 受け入れ基準 corresponds to a bundled task's scope sentence in the design directory's タスク分解 table, and each AC bullet under that heading is sourced verbatim (or as a faithful paraphrase) from the same task's 受け入れ基準 cell. Missing AC bullets that the bundled tasks promised → 🔴 blocker (routed to `pr-writer`); invented ACs not in any bundled task → 🔴 blocker (routed to `pr-writer`); AC bullets prefixed with retired ID schemes (`AC-N:` etc.) → 🔴 blocker (routed to `pr-writer`).
 4. **変更内容 is grounded in the diff AND stays within スコープ**: Every concrete claim (behavior change, moved/renamed symbol, affected subsystem) is verifiable from the actual code changes. Claims outside スコープ → 🔴 blocker. If the implementation itself exceeded the bundled tasks' scope, also route to `developer`.
-5. **設計からの変更点 matches reality**: If the implementation deviates from `docs/design/<feature>.md` (whether the deviation is in the design's port signatures, error types, or any bundled task's スコープ / AC), the deviation is documented with reason; if it does not deviate, the section says exactly `設計書のとおり実装。変更なし。` Contradicting the actual delta → 🔴 blocker (routed to `pr-writer`).
+5. **設計からの変更点 matches reality**: If the implementation deviates from the relevant `docs/design/<bounded-context>/` directories (whether the deviation is in port signatures, error types, or any bundled task's スコープ / 受け入れ基準), the deviation is documented with reason; if it does not deviate, the section says exactly `設計書のとおり実装。変更なし。` Contradicting the actual delta → 🔴 blocker (routed to `pr-writer`).
 6. **テスト describes tests that actually exist**: The perspectives / scenarios named in the section correspond to tests present in the diff. Describing tests that were not added, or omitting significant tests that were added → 🔴 blocker (routed to `pr-writer`).
 7. **影響範囲・注意点 covers reader-actionable consequences** of the actual change (breaking changes, migrations, config updates). Missing a reader-actionable consequence visible in the diff → 🟡 suggestion (routed to `pr-writer`). Inventing consequences that cannot be grounded in the diff → 🔴 blocker.
 8. **Design-doc consistency**: If a bundled task's スコープ / AC in the design doc no longer match what was implemented (scope creep, unmet criteria, renamed concepts), flag it as a design-doc drift. Route to `architect` so the Task Decomposition section can be revised before the PR is finalized. Do NOT accept silent drift in either direction (pr-writer hiding it, or developer absorbing it without architect updating the design).
@@ -81,7 +81,7 @@ For every finding, state:
 1. **Read inputs** in this order:
    - `docs/pr/<feature>/<N>-<aggregation>.md` — the document under review.
    - `~/.claude/rules/pr-style.md` — the style contract.
-   - `docs/design/<feature>.md` — the design document, with attention to the bundled task entries (the orchestrator passes the task IDs).
+   - `docs/design/<bounded-context>/` directories — the design directories the bundled tasks live in (the orchestrator passes the bundled task scope sentences in the invocation prompt; locate the matching rows in each directory's タスク分解 table).
    - The cumulative modified-file list handed off by the orchestrator.
    - `git diff <base>..HEAD` — ground truth for what changed across the bundled tasks.
    - Test files touched in the diff — to fact-check the テスト section.
