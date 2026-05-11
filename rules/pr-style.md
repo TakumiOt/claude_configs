@@ -63,13 +63,14 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 
 ### 受け入れ基準
 
-- Bullets prefixed `AC-N: ` (or task-scoped `AC-<task>-<n>:`). One AC per bullet, measurable and verifiable.
-- Sourced verbatim from the bundled tasks' 受け入れ基準 entries.
+- Grouped by task using `###` sub-headings. Each `###` heading is the bundled task's scope sentence (or a short paraphrase that preserves intent). Under each heading, list that task's acceptance criteria as plain bullets. **No AC ID prefixes** (no `AC-N:` / `AC-<tag>-<n>:` etc.).
+- Each bullet is one measurable, verifiable criterion sourced verbatim from the bundled task's 受け入れ基準 cell in the design directory's タスク分解 table. Do not invent criteria, do not silently absorb implementation drift.
+- When the aggregation bundles only 1–2 tasks, `###` sub-headings are still required so the structure stays consistent across PRs.
 
 ### 依存PR
 
-- Bullets of relative paths to prerequisite PR files, or `なし`. Inferred from the bundled tasks' `依存タスク` entries.
-- Non-PR conditions go on their own bullet prefixed `前提条件: `.
+- Bullets of relative paths to prerequisite PR files, or `なし`. Inferred from the bundled tasks' 依存タスク entries (which themselves cite prerequisites by content, not ID).
+- Non-PR conditions go on their own bullet prefixed `前提条件: ` (e.g., dependency-approval requirements, environment-variable settings).
 
 ### 関連ドキュメント
 
@@ -93,11 +94,11 @@ Every section follows the Formatting Constraints above. Section-specific rules b
   - 層 / 種別: domain unit / infrastructure / integration / contract / E2E / manual など、テスト基盤ごとの粒度。
   - テーマ: 行の振る舞い主題 (例: 「認証ユースケース」, 「永続化ラウンドトリップ」)。
   - 主なケース: シナリオ・境界条件をセル内で `/` 区切りで列挙。
-- Additional columns (場所, 対応 AC) only when the value varies meaningfully across rows.
+- Additional columns (場所) only when the value varies meaningfully across rows.
 - Bullets are acceptable when the section has only 1–2 themes. No tests added → state the reason in one sentence, then list verification substitutes (lint / build / manual) as bullets.
 - When tests group into clearly distinct categories that don't fit one table, use `###` per category, each with its own table or bullet block.
 - Never list test function names — describes coverage intent, not test runner output.
-- AC traceability: one compact trailing line below the table (e.g., `（対応する Acceptance Criteria: AC-M2 〜 AC-M10）`).
+- AC traceability is implicit: テスト テーマ should align with 受け入れ基準 task groupings so a reader can pair them by content. Do NOT reintroduce AC IDs to make the linkage explicit.
 
 ### 影響範囲・注意点
 
@@ -129,5 +130,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 | Direct-translation calque (「〜することが可能」「〜が行われる」「〜の導入を実施した」) | 🟡 |
 | Bullet with 3+ sentences without being split | 🟡 |
 | Closing prose paragraph after a bullet list | 🟡 |
+| 受け入れ基準 bullets prefixed with `AC-N:` / `AC-<tag>-<n>:` etc. (IDs were globally retired) | 🔴 |
+| 受け入れ基準 lacks `###` task-scope groupings (flat bullet list) | 🔴 |
 | Lead-in sentence longer than one sentence | 💭 |
 | Minor wording inconsistencies between parallel bullets | 💭 |
