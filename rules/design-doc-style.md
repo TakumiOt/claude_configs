@@ -80,7 +80,7 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 ### 要件整理
 
 - One `###` subsection per concern (`### 関係者`, `### 入出力`, `### エラー・境界条件`, etc.). Bullets within.
-- Feature-level acceptance criteria are listed in `### 受け入れ基準` here. Use a stable AC ID scheme (e.g., feature-tag prefix `AC-W-1:` where `W` is the feature short tag). Task-level AC IDs in タスク分解 use the per-task scheme defined in `architect.md`.
+- Bounded-context-level acceptance criteria are listed in `### 受け入れ基準` here as a plain bullet list. **No AC IDs** — write the criterion itself as the bullet content. Tasks reference these criteria by quoting or paraphrasing the bullet text in their `受け入れ基準` cell, not by ID.
 - 依存追加候補 lists external libraries / crates that the design might require. Each candidate is a parent bullet with rationale and health-check inputs in sub-bullets, per `~/.claude/CLAUDE.md` Dependency Approval Process.
 
 ### 用語
@@ -95,12 +95,12 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 
 ### Use Case 一覧
 
-- Each use case as `### UC-<N>: <name>`. Body covers 入力 / 出力 / エラー variants as bullets or a small table.
-- Cross-domain orchestration: name the central domain that owns the use case, list Gateway ports the central domain calls into the other domain through.
+- Each use case as `### <UseCaseName>` where `<UseCaseName>` is the natural function/struct name the implementation will use (e.g., `### IngestCountingEvents`). **No numeric ID prefix.** Body covers 入力 / 出力 / エラー variants as bullets or a small table.
+- Cross-bounded-context orchestration: name the central bounded context that owns the use case, list Gateway ports the central bounded context calls into the other bounded context through.
 
 ### Port 一覧
 
-- Each port as `### <PortName> (Repository | Gateway | QueryService)`.
+- Each port as `### <PortName> (Repository | Gateway | QueryService)`. **No numeric ID prefix.** The `<PortName>` is the natural trait name used in code (e.g., `### CountingEventRepository (Repository)`).
 - Body: signature in a fenced ` ```rust ` code block, placement layer + judgement-table citation as bullets, summary of what the port abstracts.
 - Trait-method `# Errors` clauses MUST list domain-error variants only — no infrastructure errors (`sqlx::Error`, `reqwest::Error`, etc.) per `~/.claude/rules/docstrings.md` "Trait-level / Method-level".
 
@@ -125,9 +125,10 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 
 ### タスク分解
 
-- Rendered as a **Markdown table** (`| ID | スコープ | 受け入れ基準 | 依存タスク |`) with one row per task. Multiple AC entries within a cell are separated by `<br>`.
+- Rendered as a **Markdown table** (`| スコープ | 受け入れ基準 | 依存タスク |`) with one row per task. **No ID column** — tasks are identified by their scope sentence. Multiple AC entries within a cell are separated by `<br>` and written as plain content (no `AC-N:` prefix).
+- The 依存タスク cell references prerequisite tasks by **content**, not by ID. Same-directory dependencies cite the prerequisite task's scope or a short paraphrase (e.g., 「`Clock` ポート定義」). Cross-directory dependencies cite the directory and the task content (e.g., 「`shared-kernel` の `Clock` ポート定義タスク」). Use 「なし」 when the task has no dependency.
 - Column definitions and worked example live in `~/.claude/agents/architect.md` "Task Decomposition" → "Required Section in the Design Document". This file does not duplicate them.
-- Do NOT render tasks as `### T-N` subsections with bullet bodies; the table is the required shape.
+- Do NOT render tasks as `###` subsections with bullet bodies; the table is the required shape.
 
 ### 関連 ADR
 
@@ -148,7 +149,10 @@ Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-
 | Enumeration of 2+ items written as prose instead of a bulleted list | 🔴 |
 | Multiple sentences on a single line without `  ` hard-break | 🔴 |
 | 用語 list rendered as bullets instead of a Markdown table | 🟡 |
-| タスク分解 rendered as `### T-N` subsections / bullets instead of a Markdown table | 🟡 |
+| タスク分解 rendered as `###` subsections / bullets instead of a Markdown table | 🟡 |
+| タスク分解テーブルが ID 列(`T-N`)を含む、または受け入れ基準が `AC-N:` 等の ID プレフィックス付きで書かれている | 🔴 |
+| Use Case 見出しが `### UC-<N>:` 等の ID プレフィックス付き(自然な関数名のみで参照すべき) | 🔴 |
+| Port 見出しが `### P-<N>:` 等の ID プレフィックス付き(自然な trait 名のみで参照すべき) | 🔴 |
 | トレードオフ presents options as one prose paragraph instead of `#### 案 <N>` subsections | 🟡 |
 | Coined kanji compound (`依存集約点`, `組み立て中枢`) instead of a verb phrase or backticked English | 🟡 |
 | Direct-translation calque (「〜することが可能」「〜が行われる」「〜の導入を実施した」) | 🟡 |
