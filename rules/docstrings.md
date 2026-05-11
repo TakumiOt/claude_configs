@@ -33,7 +33,7 @@ Every public API docstring MUST follow this structure. Items 1 and 2 are mandato
 
 ## Origin: Design Document Drafts
 
-The `architect` agent produces Japanese docstring drafts in `docs/design/<feature>.md` under a `## Docstring 草案` section. The `developer` agent transcribes these into **English** docstrings in the code during implementation — this is the **starting point**, not the finish line.
+The `architect` agent produces Japanese docstring drafts inside the relevant `docs/design/<bounded-context>/` directory under a `## Docstring 草案` section (typically in `README.md` or `ports.md`). The `developer` agent transcribes these into **English** docstrings in the code during implementation — this is the **starting point**, not the finish line.
 
 The transcription task is complete only after the Why, contract, and error conditions have been **refined against the actual implementation**, adding any constraints discovered during coding (failure conditions, concurrency assumptions, required call ordering).
 
@@ -72,4 +72,4 @@ Apply these severities verbatim — do not re-derive them.
 | Missing **Example** on a non-obvious trait or public function | 🟡 suggestion |
 | Port-trait method docstring that documents infrastructure errors instead of domain meaning | 🟡 suggestion |
 | Docstring (or `// why` comment) that cites an ADR number, design-doc path, phase name, ticket ID, or commit hash as load-bearing context instead of inlining the reasoning | 🔴 blocker ("external-reference rot") |
-| Unmodified transcription from `docs/design/<feature>.md` when the implementation has revealed additional constraints not yet reflected | 🟡 suggestion ("stale docstring — refine against implementation") |
+| Unmodified transcription from `docs/design/<bounded-context>/` when the implementation has revealed additional constraints not yet reflected | 🟡 suggestion ("stale docstring — refine against implementation") |
