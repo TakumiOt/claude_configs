@@ -65,9 +65,9 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 **Task properties**:
 
 - Atomic enough that one TDD Red→Green→Refactor cycle completes it.
-- Each task carries: ID (`T-1`, `T-2`, ...), one-sentence scope, one or more acceptance criteria (`AC-N`), and explicit task-level dependencies (e.g., `T-3 blocked by T-1`).
+- Each task carries: a one-sentence scope, one or more acceptance criteria, and explicit task-level dependencies. **No identifiers** — neither tasks, ACs, use cases, nor ports carry numeric IDs. References across the design directory (and into the PR document) use the natural identifier of the thing being referenced: function name for use cases (`IngestCountingEvents`), trait name for ports (`CountingEventRepository`), scope sentence for tasks ("the task that defines the `Clock` port"). Cross-bounded-context dependencies cite the other directory by name (e.g., "`shared-kernel` の `Clock` ポート定義タスク").
 - Sized qualitatively: typically ≤ 1 conceptual change and ≤ 3 modified files per task. If a proposed task clearly exceeds this, split it before handing off.
-- `developer` implements exactly one task per invocation. Future tasks are ignored even if visible from the current code path.
+- `developer` implements exactly one task per invocation. The main conversation passes the relevant task row (the scope sentence and its AC entries) to the developer in the invocation prompt. Future tasks are ignored even if visible from the current code path.
 
 **Documented in the design directory** under a `## タスク分解` section, in whichever file of `docs/design/<bounded-context>/` the architect places it (typically `tasks.md` or the `README.md`) — owned by `architect`. Each bounded-context directory carries its own Task Decomposition for the tasks scoped to that bounded context. There is **no per-task PR skeleton**: `architect` does not create or pre-fill any file under `docs/pr/`. PR documents are produced by `pr-writer` only when an aggregation is triggered (see Phase 3 below).
 
@@ -110,7 +110,7 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
    - For each bounded context, creates or updates `docs/design/<bounded-context>/` with: clarified requirements, bounded context summary, use case list, port signatures (each annotated with placement layer), error type hierarchy, trade-off analysis, **port-level docstring drafts only**, and the **Task Decomposition** section (flat list of tasks with ID, scope, AC, dependencies, scoped to that bounded context). Required Sections from `~/.claude/rules/design-doc-style.md` are satisfied at the directory level — the architect chooses which file inside the directory hosts each section.
    - Cross-bounded-context references (e.g. `counting` depending on `shared-kernel`'s `Clock`) point to the other directory via relative Markdown links instead of duplicating the design.
    - Does NOT create any file under `docs/pr/`. Does NOT draft entity/use-case docstrings. Does NOT decide PR aggregation. Does NOT write implementation code.
-2. **Task Plan Report** → the main conversation reports the task list to the user (task IDs, scope summaries, dependencies, recommended order). Proceed directly to Phase 2 UNLESS `architect` explicitly flags ambiguity (multiple plausible decompositions, unclear ordering, sensitive boundary) — in which case wait for explicit user feedback. The user may always intervene to revise the plan, but the default path no longer pauses.
+2. **Task Plan Report** → the main conversation reports the task list to the user (each task quoted by its scope sentence, plus dependencies and recommended order — no IDs). Proceed directly to Phase 2 UNLESS `architect` explicitly flags ambiguity (multiple plausible decompositions, unclear ordering, sensitive boundary) — in which case wait for explicit user feedback. The user may always intervene to revise the plan, but the default path no longer pauses.
 
 #### Phase 2 — Per-Task Implementation Loop
 
@@ -139,7 +139,7 @@ For each aggregation:
 
 The overall feature is complete when every task has exited its task fix loop AND every aggregation has exited its PR fix loop.
 
-When invoking the next agent, always pass the previous agent's output (design artifacts, task IDs in scope, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
+When invoking the next agent, always pass the previous agent's output (design artifacts, the task's scope sentence in this invocation, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
 
 The user is consulted **only** at these points (never between phases of the loop itself):
 
