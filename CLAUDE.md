@@ -53,8 +53,9 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any design directory (`docs/design/<bounded-context>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence against the change description. Findings route to `developer`.
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
+4. **Task completion checkpoint (MANDATORY)** — as soon as the Fix loop exits, the main conversation MUST report the completion summary to the user and wait for explicit confirmation before declaring the work done. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). Do NOT consider the work finished until the user responds. This is the same gate as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
 
-**Reduced Definition of Done**: items 1, 1a, 1b, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed).
+**Reduced Definition of Done**: items 1, 1a, 1b, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, Task completion checkpoint cleared).
 
 **Scope-creep escape hatch**: If during Path B work the change grows beyond the trigger criteria (e.g., the refactor turns out to need a new port or a new use case), STOP, report the scope creep to the user, and switch to Path C — start over with `architect` rather than continuing on Path B.
 
@@ -118,9 +119,10 @@ For each task in dependency order (or in parallel when dependencies allow):
 
 1. **developer** → implements the current task via TDD. Reads `docs/design/<bounded-context>/` for the bounded context that owns the task (whole-context view) AND the task's entry in the Task Decomposition section, plus any cross-context dependencies the task references via relative links. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings per `~/.claude/rules/docstrings.md`; for ports, transcribes the architect's draft and refines it. Reports the modified file list AND any deviation from the design with rationale. Does NOT touch any PR document.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence (boundary = the task entry in the design doc). Findings route to `developer`. Returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
-3. **Task fix loop** — if `code-reviewer` returns any 🔴 blocker, OR any 🟡 suggestion the user has not explicitly deferred, re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain and all non-deferred 🟡 are addressed. The task is then complete and pending aggregation.
+3. **Task fix loop** — if `code-reviewer` returns any 🔴 blocker, OR any 🟡 suggestion the user has not explicitly deferred, re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain and all non-deferred 🟡 are addressed.
+4. **Task completion checkpoint (MANDATORY)** — as soon as a task exits its Task fix loop, the main conversation MUST report the task's completion summary to the user and wait for explicit confirmation before continuing. The report includes: the task's scope sentence, the modified file list, a one-line test/lint/build outcome, any design deviation surfaced (with rationale), and the proposed next action (next task in dependency order, or aggregation now if a Phase 3 trigger fires). Do NOT start the next task and do NOT move to Phase 3 until the user responds. The task is then complete and pending aggregation.
 
-The per-task loop is lightweight: no PR document is touched, neither `pr-writer` nor `pr-reviewer` is invoked. Phase 2 may execute many tasks in succession before Phase 3 fires.
+The per-task loop is lightweight: no PR document is touched, neither `pr-writer` nor `pr-reviewer` is invoked. Phase 2 may execute many tasks in succession before Phase 3 fires, but every task transition passes through the checkpoint above.
 
 #### Phase 3 — Aggregation Gate and Per-PR Loop
 
@@ -144,6 +146,7 @@ When invoking the next agent, always pass the previous agent's output (design ar
 The user is consulted **only** at these points (never between phases of the loop itself):
 
 - **Task Plan Approval** — only when `architect` explicitly flags decomposition ambiguity (Phase 1 step 2). The default path proceeds without a user gate.
+- **Task completion checkpoint** — after every task exits its Task fix loop (Phase 2 step 4). Always required; gates the next-task transition and the decision to trigger aggregation.
 - **Aggregation timing** — when none of the auto-triggers above clearly fire and Phase 2 has produced multiple completed tasks, ask the user whether to aggregate now or continue.
 - **Dependency approval** (per the Dependency Approval Process below).
 - **Ambiguous requirements** that `architect` cannot resolve from the available context.
@@ -165,6 +168,7 @@ On the Lightweight Path (Path B) the design / PR-document items are skipped — 
 6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
 7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
 8. **Independent reviews passed**: BOTH `code-reviewer` (code / tests / docstrings / dependencies / scope adherence) AND `pr-reviewer` (PR document style + factual consistency) reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
+9. **Task completion checkpoint cleared**: After the task exits its fix loop, the main conversation has reported the completion summary to the user (scope, modified file list, test/lint/build outcome, any design deviation) and received explicit user confirmation. Defined by Path C Phase 2 step 4 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
 
 ## Dependency Approval Process (MANDATORY)
 
