@@ -38,10 +38,11 @@ Self-managed modules (domain / use case / middleware / infrastructure we own) MU
 | Layer | Style | Allowed doubles |
 |---|---|---|
 | Entity / Domain (pure value objects) | Detroit | None — use the real type |
-| Use Case | Detroit | **Fake** (in-memory) for repositories; **Boundary Mock** for external I/O ports; real instances for everything else we own (signers, verifiers, crypto) |
-| Middleware | Detroit | Same as use case |
-| Infrastructure — pure logic (crypto, hashing, HMAC, JWT, etc.) | Detroit | None — use the real implementation |
-| Infrastructure — DB / external API bindings | Covered by integration tests | Do not write unit tests at this layer |
+| Use Case | Detroit | **Boundary Mock** for external I/O ports; real instances for everything else we own (signers, verifiers, crypto, repositories). Use-case-level branch-coverage tests run against a real database via the workspace's `tests/usecase/` test-runner crate. In-memory `Fake*Repository` doubles for self-managed persistence are not used. |
+| Middleware | Detroit | Router-level observable behavior runs against a real database via the `tests/integration/` test-runner crate. Pure middleware logic with no port collaborators may stay co-located in `#[cfg(test)] mod tests`. In-memory `Fake*Repository` doubles are not used. |
+| Infrastructure — pure logic (crypto, hashing, HMAC, JWT, etc.) | Detroit | None — use the real implementation; tests live co-located in `#[cfg(test)] mod tests` inside the owning crate. |
+| Infrastructure — adapter wrapping a persistence port (e.g., `Argon2*Verifier`, snapshot caches that reload from a `Pg*Repository`) | Detroit | Branch-coverage tests run against a real database via the `tests/infrastructure/` test-runner crate. In-memory `Fake*Repository` doubles are not used. |
+| Infrastructure — DB / external API bindings (raw `Pg*Repository` etc.) | Covered by integration tests | Do not write unit tests at this layer |
 | Adapter / Handler | Covered by integration tests | — |
 | Integration tests | Detroit | Only **Boundary Mocks** for external I/O |
 
@@ -49,8 +50,11 @@ Self-managed modules (domain / use case / middleware / infrastructure we own) MU
 
 **Overlap is a deliberate division of labor, not waste.** Verifying the same business rule at different levels of abstraction is legitimate.
 
-- **Unit tests** — Fast and exhaustive. Responsible for **branch coverage, boundary conditions, and error paths**. Verify the internal behavior of a self-managed module.
-- **Integration tests** — Slower, happy-path oriented. Responsible for **cross-layer wiring**: real SQL execution, middleware traversal, crypto wiring, HTTP response mapping.
+- **Unit tests** — Fast and exhaustive. Responsible for **branch coverage, boundary conditions, and error paths** on **pure-logic** self-managed modules (entities, value objects, crypto primitives, etc.). Live co-located in `#[cfg(test)] mod tests { ... }` blocks inside the owning crate.
+- **Integration tests** — Use real cross-layer collaborators (real DB, real crypto, real HTTP routing where applicable). Three complementary shapes coexist:
+  - **Use-case-level integration tests** (`tests/usecase/`) — Exhaustive branch-coverage tests for use cases, driving the production repository / gateway impls against a real database. They replace what would historically have been use-case unit tests with `Fake*Repository` doubles.
+  - **Infrastructure-adapter integration tests** (`tests/infrastructure/`) — Exhaustive branch-coverage tests for infrastructure adapters that wrap a persistence port (e.g., `Argon2*Verifier`, snapshot caches that reload from a `Pg*Repository`). They replace what would historically have been adapter unit tests with `Fake*Repository` doubles.
+  - **HTTP / E2E integration tests** (`tests/integration/`) — Cover **cross-layer wiring**: real SQL execution, middleware traversal, crypto wiring, HTTP response mapping. Includes Router-level middleware behavior (CORS, auth) that needs real persistence at the boundary.
 
 ### Where Does an Observation Belong?
 
