@@ -15,9 +15,9 @@ Rust projects in this team use a Cargo **workspace split by bounded context**. T
 
 ### Per-crate rules
 
-- **Library by default**: every workspace crate exposes a `src/lib.rs`. Domain crates, `shared-kernel`, `infrastructure`, and `test-integration` are library-only and have no `src/main.rs` or `src/bin/*.rs`.
+- **Library by default**: every workspace crate exposes a `src/lib.rs`. Domain crates, `shared-kernel`, `infrastructure`, the test-support libraries under `crates/test-*/`, and the test-runner crates under `tests/<name>/` are library-only and have no `src/main.rs` or `src/bin/*.rs`.
 - **Binaries live in `app` only**: only the `app` crate ships executables. Place each binary entry point under `app/src/bin/<name>.rs` and keep the file as a thin shim — parse arguments, build the composition root by calling into `app`'s library, translate errors to exit codes. No business logic.
-  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Splitting `app` into `app/src/lib.rs` + `app/src/bin/*.rs` makes the composition root reachable from both the binary and the `test-integration` crate.
+  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Splitting `app` into `app/src/lib.rs` + `app/src/bin/*.rs` makes the composition root reachable from both the binary and the test-runner crates under `tests/<name>/`.
 - **Workspace-root `Cargo.toml`** is a virtual workspace: it declares `[workspace]` with the crate `members` list and shared `[workspace.dependencies]` / `[workspace.package]`, but no `[package]` of its own.
 
 `code-reviewer` MUST flag the following as 🔴 blockers:
@@ -30,27 +30,30 @@ Rust projects in this team use a Cargo **workspace split by bounded context**. T
 
 This section refines the Testing rules from the global `CLAUDE.md` for Rust. BDD with the Detroit (classicist) school of TDD still applies — test real collaborators, mock only at architectural boundaries, verify state and output rather than interactions.
 
-### Layout (workspace + test-integration crate)
+### Layout (workspace + test-runner crates under `tests/<name>/`)
 
 - **Unit tests**: Co-located in the same file as the code under test, inside a `#[cfg(test)] mod tests { ... }` block. Scope is limited to the module's internals, including private items. Lives **inside the same crate** as the code under test (typically a domain crate, `shared-kernel`, or `infrastructure`).
-- **Integration tests and E2E tests**: ALL integration and end-to-end tests live in the dedicated **`test-integration` crate** at the workspace root. Each `.rs` file under `test-integration/tests/` is compiled as a separate test binary and may exercise the public APIs of the domain crates, the `infrastructure` crate, and the `app` crate via injected ports / composition.
-  - Do NOT create a `tests/` directory inside any domain crate, `shared-kernel`, or `infrastructure`. Those crates have unit tests only.
+- **Integration tests and E2E tests**: ALL integration and end-to-end tests live in test-runner crates under the workspace-root `tests/<name>/` directory (typical runners are `tests/integration/` for HTTP-level wiring, `tests/usecase/` for use-case branch coverage against a real database, and `tests/infrastructure/` for infrastructure-adapter branch coverage against a real database). Each `.rs` file under `tests/<name>/tests/` is compiled as a separate test binary and may exercise the public APIs of the domain crates, the `infrastructure` crate, and the `app` crate via injected ports / composition.
+  - The phrase "`tests/` directory" is ambiguous on its own — it refers to **two different things** in this rule: the workspace-root `tests/` directory (which IS the home for test-runner crates and is required) versus a `tests/` directory inside any individual crate (which is forbidden outside the test-runner crates' own `tests/<name>/tests/`).
+  - Do NOT create a `tests/` directory inside any `crates/<production>/` crate (domain crates, `shared-kernel`, `infrastructure`, `app`) or inside any `crates/test-*/` test-support library. Those crates have unit tests only. The only allowed `tests/` directories are the test-runner crates' own `tests/<name>/tests/` (Cargo's per-crate integration-test directory inside the runner).
   - Do NOT place integration tests inside `src/` or inside `#[cfg(test)]` modules.
   - Do NOT test private items from integration tests — if coverage is missing, the API surface is wrong, not the test location.
-  - Shared helpers (DB setup, fixtures, builders, test-only HTTP clients) live in `test-integration/src/lib.rs` (the crate's library entry). Each test file imports them with `use test_integration::...;`. The legacy `tests/common/mod.rs` pattern is not used here — the crate's own `lib.rs` already provides a stable home for helpers.
-- **Test-support crate naming**: When a workspace adds further test-support crates beyond `test-integration` (e.g. a contract-test harness or a shared DB-fixture crate), every such crate MUST use the `test-*` prefix (`test-contract`, `test-db`, ...). The shared prefix keeps test-support crates grouped together in alphabetical workspace listings and signals their non-production role at a glance.
+  - Shared helpers (DB setup, fixtures, builders, test-only HTTP clients) live in `tests/<name>/src/lib.rs` (the runner crate's library entry). Each test file imports them with `use <runner_crate>::...;` (e.g. `use test_integration::...;` when the runner crate's `[package].name` is `"test-integration"`). The legacy `tests/common/mod.rs` pattern is not used here — the runner crate's own `lib.rs` already provides a stable home for helpers.
+- **Test-support library naming**: Test-support **library** crates under `crates/` (e.g. a contract-test helper library or a shared DB-fixture library) MUST use the `test-*` prefix (`test-contract`, `test-db`, ...). The shared prefix keeps these libraries grouped together in alphabetical `crates/` listings and signals their non-production role at a glance. Test-runner crates under `tests/<name>/` do NOT require the prefix — the `tests/` directory itself already groups them and signals their role; the runner crate's `[package].name` may follow either convention (e.g. `"test-integration"` is acceptable, so is `"tests-integration"` if a new runner is named afresh).
 - **Doc tests**: Use for small, illustrative examples on public items. Do not rely on doc tests as the primary coverage mechanism.
 
-### Why a single test-integration crate
+### Why test-runner crates live under `tests/<name>/`
 
-- Real persistence / HTTP-client implementations live in `infrastructure`. Concentrating tests that wire `infrastructure` against domain ports in one crate keeps DB setup / teardown, transaction management, and fixture loading in one place.
-- Cross-domain scenarios have a natural home: this crate is the only place that depends on multiple domain crates plus `infrastructure` and `app`, so end-to-end flows across bounded contexts can be exercised without violating the inter-domain "no direct dependency" rule at the production layer.
-- Cargo compiles every file under `tests/` as a separate test binary, so test-binary parallelism is preserved while shared helpers stay in a single library.
+- **Physical grouping of test concerns**: each test-runner crate addresses a distinct test concern (HTTP-level integration in `tests/integration/`, use-case-level real-DB testing in `tests/usecase/`, infrastructure-adapter real-DB testing in `tests/infrastructure/`). Placing them under a shared `tests/` directory groups them at the directory level so a reader can scan `tests/<name>/` to enumerate all test-runner crates without reading `Cargo.toml`.
+- **`crates/` stays focused on code**: production crates and test-support libraries live under `crates/`. Test-runner crates live under `tests/`. The split keeps `crates/` listings free of test-runner noise and makes the "production vs. test-execution" boundary visible in the directory tree.
+- **Cross-domain scenarios** have a natural home in `tests/integration/`: the runner crate is the only place that depends on multiple domain crates plus `infrastructure` and `app`, so end-to-end flows across bounded contexts can be exercised without violating the inter-domain "no direct dependency" rule at the production layer.
+- **Real persistence / HTTP-client implementations** live in `infrastructure`. Concentrating tests that wire `infrastructure` against domain ports in the test-runner crates keeps DB setup / teardown, transaction management, and fixture loading in one place per runner.
+- Cargo compiles every file under `tests/<name>/tests/` as a separate test binary, so test-binary parallelism is preserved while shared helpers stay in a single library per runner.
 
 `code-reviewer` MUST flag any of the following as 🔴 blockers:
 
-- An integration / E2E test placed anywhere outside the `test-integration` crate.
-- A `tests/` directory created inside any non-`test-integration` workspace crate.
+- An integration / E2E test placed anywhere outside the test-runner crates under `tests/<name>/`.
+- A `tests/` directory created inside any `crates/<production>/` crate or any `crates/test-*/` test-support library (the only allowed `tests/` directories are the test-runner crates' own `tests/<name>/tests/`).
 
 ## Task Runner
 
@@ -106,7 +109,9 @@ This section maps the general rules in `~/.claude/rules/docstrings.md` onto Rust
 
 - `///` documents the item that follows. Use it for `pub` functions, methods, structs, enums, unions, traits, type aliases, and constants.
 - `//!` is an inner doc comment. Use it for module-level docs (top of `mod.rs` / `<module>.rs`) and crate-level docs (top of `src/lib.rs`).
+- The `//!` overview is the home for the module's big picture and any Why shared by several items — write it like a Rust std library module page, then keep each item's `///` short (see `docstrings.md` "Module-Level Docstrings" and "Where Each Why Lives").
 - Place doc comments directly above the item — no blank line between the comment and the item.
+- Implementation-mechanic rationale (why a derive, why zero-sized, why error detail is dropped at a boundary) goes in ordinary `//` body comments next to the code — not in the `///` doc comment, which states the caller-facing contract.
 
 ### Section heading layout
 
@@ -115,8 +120,8 @@ Rustdoc uses standard `#`-headed sections. Layer the general docstring structure
 | General item (from `docstrings.md`) | Rust placement |
 |---|---|
 | 1. Summary (one line) | First line of the doc comment, terminated by a blank line. Reused as the search-result snippet — keep it concise. |
-| 2. Why / Responsibility | Free-form prose paragraph(s) after the summary, before any `#`-headed section. |
-| 3. Contract — parameters and return | Free-form prose. Add `# Arguments` / `# Returns` headings only when the contract is non-trivial. |
+| 2. Why / Responsibility | One or two sentences after the summary, before any `#`-headed section. Why shared by several items goes in the module `//!`; implementation-mechanic Why goes in `//` body comments — not the doc comment (see `docstrings.md` "Where Each Why Lives"). |
+| 3. Contract — parameters and return | Bulleted list when 2+ parameters need explanation; a single sentence otherwise. Add `# Arguments` / `# Returns` headings only when the contract is non-trivial. |
 | 3. Contract — error variants | `# Errors` section. **Required** whenever the function returns `Result`. List the domain error variants and the conditions that trigger each. |
 | 3. Contract — panic conditions | `# Panics` section. **Required** whenever the function may panic, including a non-trivial `.expect("...")` and panics from a violated precondition. |
 | 4. Side effects | Surface in the Why / detail area when present (I/O, state mutation, external call, blocking, async cancellation behavior). State "Pure" when none. |
