@@ -143,7 +143,7 @@ Rust projects MUST use a Cargo workspace, split **by bounded context (domain)** 
 
 ```text
 Cargo.toml                         # workspace root: declares [workspace] members (no [package])
-crates/
+crates/                            # production code + test-support libraries
 ├── shared-kernel/
 │   ├── Cargo.toml                 # [package] no workspace dependencies
 │   └── src/lib.rs                 # cross-cutting value objects and ports (Clock, Money, Email, etc.)
@@ -168,13 +168,20 @@ crates/
 ├── app/                           # composition root (binary)
 │   ├── Cargo.toml                 # depends on every crate above
 │   └── src/{lib.rs, bin/<name>.rs}
-└── test-integration/              # cross-crate integration / E2E tests
-    ├── Cargo.toml                 # depends on every domain crate + infrastructure + app
-    ├── src/lib.rs                 # shared test helpers (DB setup, fixtures)
+├── test-db/                       # test-support library (library-only)
+│   ├── Cargo.toml                 # depends on infrastructure + domain crates as needed
+│   └── src/lib.rs                 # DB lifecycle harness + fixture helpers
+└── test-contract/                 # test-support library (library-only)
+    ├── Cargo.toml                 # depends on domain crates + test-db
+    └── src/lib.rs                 # shared port-contract assertion functions
+tests/                             # test-runner crates (binary tests)
+└── integration/                   # cross-crate integration / E2E tests
+    ├── Cargo.toml                 # depends on every domain crate + infrastructure + app + test-db
+    ├── src/lib.rs                 # shared test helpers (TestAppBuilder, fixtures)
     └── tests/                     # integration / E2E test bodies (see rust.md "Test Layout")
 ```
 
-**Test-support crate naming**: When a workspace contains more than one test-support crate (e.g. an integration-test harness alongside a contract-test harness or a shared DB-fixture crate), use the **`test-*` prefix** consistently — `test-integration`, `test-contract`, `test-db`, etc. The shared prefix groups them together in alphabetical workspace listings and signals their non-production role at a glance. A single test-support crate may use any name, but as soon as a second one is added the prefix becomes mandatory and existing crates MUST be renamed for consistency.
+**Test-support library naming**: Test-support **library** crates that live under `crates/` (e.g. a contract-test helper library or a shared DB-fixture library) MUST use the **`test-*` prefix** consistently — `test-contract`, `test-db`, etc. The shared prefix groups them together in alphabetical `crates/` listings and signals their non-production role at a glance. A single test-support library may use any name, but as soon as a second one is added the prefix becomes mandatory and existing crates MUST be renamed for consistency. Test-**runner** crates under `tests/<name>/` (the crates that hold actual `#[test]` binaries) do NOT require the prefix — the `tests/` directory itself already signals their role and groups them together.
 
 ### Dependency direction (workspace level)
 
@@ -184,7 +191,8 @@ The compiler enforces this graph through each crate's `Cargo.toml` `[dependencie
 - `<domain-*>` — depends only on `shared-kernel`. **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
 - `infrastructure` — depends on every domain crate and `shared-kernel`. It implements each domain's Repository / Gateway ports so all DB and external-IO concerns live here.
 - `app` — depends on every crate. Wires the composition root, builds the Axum `Router`, owns binary entry points.
-- `test-integration` — depends on every domain crate, `infrastructure`, and `app`. It exists only as a test harness.
+- `test-db` / `test-contract` (under `crates/`) — test-support libraries. `test-db` depends on `infrastructure` and the domain crates it seeds; `test-contract` depends on the domain crates whose port contracts it asserts plus `test-db`. Neither hosts test binaries.
+- `tests/integration/` (under `tests/`) — test-runner crate. Depends on every domain crate, `infrastructure`, `app`, `test-db`, and (where contract tests are wired) `test-contract`. It exists only as a test harness.
 
 ### Adapter placement
 
@@ -196,7 +204,7 @@ A use case that touches multiple bounded contexts (e.g. "place order" reaching i
 
 ### Single-domain projects
 
-If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app`, and `test-integration`. Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
+If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app` under `crates/`, and at least one test-runner crate under `tests/<name>/` (typically `tests/integration/`). Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
 
 ### Structure review checklist
 
@@ -207,8 +215,8 @@ If the project genuinely has one bounded context, the workspace structure still 
 - [ ] Persistence and external-IO implementations live in the `infrastructure` crate; no domain crate contains DB pool / HTTP-client wiring.
 - [ ] Each domain crate's source layout uses `domain/` / `usecase/` / `adapter/` modules; the inward-only direction is preserved within the crate via module visibility (`pub(crate)` and narrower).
 - [ ] Cross-domain use cases live in the central domain's `usecase/` module and reach other domains only through Gateway ports.
-- [ ] Integration / E2E tests live in the `test-integration` crate (see `rust.md` "Test Layout"), not in any domain crate's `tests/`.
-- [ ] When the workspace has more than one test-support crate, every such crate uses the `test-*` prefix.
+- [ ] Integration / E2E tests live in a test-runner crate under `tests/<name>/` (currently `tests/integration/`), not in any domain crate's `tests/` or in a `crates/test-*/tests/` directory (see `rust.md` "Test Layout").
+- [ ] When the workspace has more than one test-support **library** crate under `crates/`, every such crate uses the `test-*` prefix. Test-runner crates under `tests/<name>/` are grouped by the `tests/` directory itself and do not require the prefix.
 
 ---
 
