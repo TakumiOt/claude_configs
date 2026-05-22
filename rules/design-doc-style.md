@@ -1,32 +1,46 @@
 ---
 name: design-doc-style
-description: Authoritative style rules for every file under docs/design/<bounded-context>/. Owned by architect; self-graded against the Severity Matrix at the bottom. Independent of pr-style.md; conflicts resolved per Precedence.
+description: Authoritative structure and style rules for every file under docs/design/. Owned by architect; self-graded against the Severity Matrix at the bottom. Independent of pr-style.md; conflicts resolved per Precedence.
 ---
 
 # Design Document Style Rules
 
-Single source of truth for the visual and structural style of `docs/design/<bounded-context>/` directories. `architect` writes the documents and self-checks against the Severity Matrix at the bottom before declaring the design phase done. A future design-reviewer agent grades against the same matrix.
+Single source of truth for the structure and visual style of `docs/design/`. `architect` writes the documents and self-checks against the Severity Matrix at the bottom before declaring the design phase done. A future design-reviewer agent grades against the same matrix.
 
 ## Precedence
 
 This file wins over style sections in `~/.claude/agents/architect.md`. It loses to `~/.claude/rules/architecture.md` (technical principles like layer responsibilities and port placement) — those are domain-of-truth rules, while this file governs document presentation.
 
-This file is **independent of** `~/.claude/rules/pr-style.md`. The two address different audiences and lifecycles; rules are not transitively inherited. Where a rule appears identical across both files, it is restated here for clarity.
+This file is **independent of** `~/.claude/rules/pr-style.md`. The two address different audiences and lifecycles; rules are not transitively inherited.
 
 ## Scope
 
-Applies to every Markdown file inside `docs/design/<bounded-context>/` directories. Per `~/.claude/CLAUDE.md` "Documentation directory layout", design docs are organized **by bounded context** (one directory per bounded context, including cross-cutting layers like `shared-kernel` and `infrastructure`). The design directory is wholly architect-owned and is created/updated in Phase 1 of the Orchestration Loop. Updates during Phase 2 / Phase 3 (when implementation reveals design drift) are also bound by this file.
+Applies to every Markdown file under `docs/design/`. Two kinds of documents:
 
-Internal file splitting inside a bounded-context directory is at the architect's discretion. Small bounded contexts may keep everything in `README.md`; larger ones split per topic. Required Sections (below) are satisfied **at the directory level** — every required section must be present somewhere in the directory, but architect chooses which file hosts it. Cross-bounded-context references use relative Markdown links (e.g. `../shared-kernel/README.md`) instead of duplicating content.
+- **基本設計書** (`docs/design/overview/`) — the system-wide design book. Why the system exists, who uses it, what it does, how the crates are structured. One per repository.
+- **クレート設計書** (`docs/design/<crate>/`) — one directory per crate (a bounded context, or a cross-cutting crate such as `shared-kernel` / `infrastructure`).
 
-Each bounded-context directory MUST contain a `README.md` that serves as the entry point — background, scope summary, dependency edges to other bounded-context directories, and a table of contents pointing to internal files.
+`タスク分解` is **not** a design document. It lives in a standalone `docs/tasks/<work-name>.md` with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
 
-ADR files (`docs/adr/<NNNN>-<title>.md`) are NOT covered here; ADRs follow their own short template (Status / Context / Decision / Consequences) per `~/.claude/agents/architect.md`.
+ADR files (`docs/adr/<NNNN>-<title>.md`) follow their own short template and are not covered here.
+
+## Core Principle: Basic Design, Not Detailed Design
+
+Design documents are **基本設計** (high-level design). They convey purpose, responsibility, functionality, and structure — enough to understand *what each crate is for and what it does*. **詳細設計 (detailed design) lives in the code.**
+
+The following MUST NOT appear in a design document — they are the code's responsibility:
+
+- Full type signatures (`fn` signatures, struct field lists, trait method bodies).
+- Error `enum` definitions (variant-by-variant code blocks).
+- SQL / DDL / migration bodies.
+- Docstring drafts.
+
+Refer to these by name and role instead, and treat the code as the source of truth for the detail.
 
 ## Language
 
 - Document body: Japanese.
-- Code identifiers, file paths, type names, port signatures, code snippets: native form (English / project-native), kept in backticks or fenced code blocks.
+- Code identifiers, file paths, type names, code snippets: native form (English / project-native), kept in backticks or fenced code blocks.
 - No JP/EN code-mixing, no forced kanji translations of industry-standard katakana, no coined kanji compounds, no direct-translation calques. Full rule and substitutions in `~/.claude/CLAUDE.md` "Language & Documentation Policy".
 - This rule file: English (per `~/.claude/CLAUDE.md` Rules Directory Governance §6).
 
@@ -37,7 +51,7 @@ ADR files (`docs/adr/<NNNN>-<title>.md`) are NOT covered here; ADRs follow their
 Prose is permitted ONLY for:
 
 1. A single short lead-in sentence framing a bullet list.
-2. Trade-off analysis where a reasoned narrative is genuinely clearer than bullets (rare; usually still bulleted with sub-bullets).
+2. Trade-off analysis where a reasoned narrative is genuinely clearer than bullets (rare; usually still bulleted).
 3. Sequence diagram captions (one short sentence per diagram).
 
 Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / consequences / edge cases in paragraph form, narrative transitions between bullet groups, closing a bullet list with a wrap-up paragraph.
@@ -47,120 +61,106 @@ Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / cons
 - **One sentence per line, Markdown hard break**: end each sentence with `。` + two trailing spaces + newline. The last sentence before a blank line does not need trailing spaces.
 - **Sentence length**: aim for ~120 characters. Guideline only — not flagged.
 - **One bullet = one sentence**. If a bullet needs more context, split it into a parent + sub-bullets.
-- **Bullets lead with role, not name**. The grammatical subject of every top-level bullet MUST be a role / behavior / decision in plain language — not a code identifier (file path, function, type, crate, module, env-var). Code identifiers go in parentheses after the role descriptor. Sub-bullets MAY use code identifiers as subjects when the parent bullet has already established the role.
-- **Hoist enumerations of related identifiers into sub-bullets**. Trigger: parenthetical reaches 3+ identifiers, OR spans 2+ categories, OR makes the parent sentence hard to read in one pass.
-- **Use `###` and `####` to structure long sections**. Top-level sections are `##`; subsections are `###`; further subdivision is `####`. Maximum heading depth: `####`.
+- **Bullets lead with role, not name**. The grammatical subject of every top-level bullet MUST be a role / behavior / decision in plain language — not a code identifier. Code identifiers go in parentheses after the role descriptor. Sub-bullets MAY use code identifiers as subjects once the parent has established the role.
+- **Hoist enumerations of related identifiers into sub-bullets**. Trigger: parenthetical reaches 3+ identifiers, OR spans 2+ categories.
+- **Use `###` and `####` to structure long sections**. Maximum heading depth: `####`.
 - **Blank line between distinct ideas, not between bullets of the same list**.
 
-## Required Sections (in order)
+## Document Structure
 
-The bounded-context directory MUST include the following top-level (`##`) sections in this order, **across the directory's files as a whole**. The architect chooses which file hosts each section: small directories may keep everything in `README.md`; larger directories split per topic. The order constraint applies to the canonical reading sequence — when a reader follows the `README.md`'s table of contents, sections should appear in this order. **必須** sections are always required; **任意** sections are included only when the bounded context actually exercises them.
+### 基本設計書 — `docs/design/overview/`
 
-1. **背景・目的** (必須). Why this feature exists; the user-facing capability it delivers.
-2. **要件整理** (必須). Clarified requirements per `~/.claude/agents/architect.md` "Requirements clarification". Sub-sections: 関係者 / 入出力 / エラー・境界条件 / 受け入れ基準 / データライフサイクル / 連携 / 依存追加候補.
-3. **用語** (新規ドメイン用語が 3 つ以上現れる場合は必須). Glossary mapping each new domain term to a one-sentence definition.
-4. **Bounded Context** (必須). Which domain crate hosts this bounded context, and which other bounded contexts it depends on. For cross-cutting layers (`shared-kernel`, `infrastructure`), describe the role they play and which bounded-context directories reference them. Cite the dependency graph rule consulted in `~/.claude/rules/architecture.md`.
-5. **Use Case 一覧** (必須). Each use case as `### UC-<N>: <name>` with input / output / error variants.
-6. **Port 一覧** (新規 port を導入する場合は必須). Each port with signature, placement layer (Entity / Use Case), and citation to the placement judgement table in `architecture.md`.
-7. **エラー型階層** (必須). Per-layer error types (DomainError in Entities, UseCaseError in Use Cases) and the wrapping relationship.
-8. **シーケンス図** (任意). Mermaid `sequenceDiagram` blocks for inter-layer flows that are not obvious from the text.
-9. **トレードオフ** (必須). At least 2 options with their pros / cons / cost / risk; recommendation with rationale at the end.
-10. **Docstring 草案** (新規 port を導入する場合は必須). Port-level docstring drafts in Japanese. Format defined verbatim in `~/.claude/agents/architect.md` "Port docstring drafts (Japanese, port-level only)" — this rule file does not duplicate it.
-11. **タスク分解** (必須). Task list per `~/.claude/agents/architect.md` "Task Decomposition" — format defined there, not duplicated here.
-12. **関連 ADR** (該当 ADR がある場合は必須). Bullets of relative Markdown links to ADRs that this design depends on or supersedes.
+Across its files, the basic-design book MUST cover:
 
-Sections may be reordered ONLY when the feature genuinely benefits (e.g., trade-off resolution drives the bounded-context choice). State the reordering reason in a one-line note at the top of the section.
+- システムの目的・責務 — why the system exists, the capability it delivers, what it does NOT do.
+- 想定ユーザー — the actors and how they authenticate.
+- ユーザーごとのユースケースと権限 — what each actor can do.
+- 機能一覧 — the features the system provides.
+- クレート構成と依存グラフ — the crate list and their dependency edges.
+- データフロー図 — the major flows that cross crates.
+- システム全体の設計判断 — cross-cutting decisions, with an ADR index.
+
+Recommended file layout: `README.md` (目的・責務・想定ユーザー・機能一覧・目次) / `use-cases.md` / `architecture.md` (構成・依存グラフ・データフロー) / `design-decisions.md`. The `README.md` is the entry point and carries a 目次.
+
+### クレート設計書 — `docs/design/<crate>/`
+
+One directory per crate. The `README.md` is always the entry point — 目的・責務, スコープ (扱う / 扱わない), 連携, 目次. The architect picks one of three templates by crate kind.
+
+**ドメインクレート** — `README.md` / `use-cases.md` / `domain-model.md` / `interfaces.md` / `design-notes.md`.
+
+- `use-cases.md` — 提供するユースケース。各々の名前・目的・入出力の概要・主要なエラー方針。
+- `domain-model.md` — 所有する集約・値オブジェクトの名前と役割、永続化データの概要、用語集。
+- `interfaces.md` — 公開ポート (名前・種別・配置レイヤー・抽象対象)、HTTP API / CLI。
+- `design-notes.md` — クレート固有の設計判断・トレードオフ・制約。
+- A domain crate with no use cases of its own omits `use-cases.md`; the README states the reason.
+
+**横断・技術クレート** (`infrastructure` 等) — `README.md` / `port-implementations.md` / `boundary-policy.md` / `platform.md` / `design-notes.md`.
+
+- `port-implementations.md` — 実装する全ポートの一覧 (ドメイン別) と永続化基盤。
+- `boundary-policy.md` — 境界変換 (フレームワーク例外 → ドメインエラー) と識別子変換のポリシー。
+- `platform.md` — マイグレーション基盤・ロギング・デプロイ前提などの技術基盤。
+
+**横断・kernel クレート** (`shared-kernel` 等) — `README.md` / `provided-items.md` / `design-notes.md`.
+
+- `provided-items.md` — 提供する値オブジェクト・横断ポート・エラー。
+
+Internal file splitting beyond the template is at the architect's discretion based on size; a small crate may merge files, but the `README.md` entry point with a 目次 is always required. Cross-directory references use relative Markdown links.
 
 ## Per-Section Style
 
-### 背景・目的
+### 目的・責務 / スコープ / 連携
 
-- 3 bullets or a 2–3 sentence paragraph maximum. Linking to PRD / spec is acceptable.
+- 3 bullets 程度を上限とする。基本設計書や ADR の内容を重複させず、リンクで参照する。
+- 連携は依存先 / 依存元 / 外部 Actor を箇条書きまたは表で示す。
 
-### 要件整理
+### ユースケース
 
-- One `###` subsection per concern (`### 関係者`, `### 入出力`, `### エラー・境界条件`, etc.). Bullets within.
-- Bounded-context-level acceptance criteria are listed in `### 受け入れ基準` here as a plain bullet list. **No AC IDs** — write the criterion itself as the bullet content. Tasks reference these criteria by quoting or paraphrasing the bullet text in their `受け入れ基準` cell, not by ID.
-- 依存追加候補 lists external libraries / crates that the design might require. Each candidate is a parent bullet with rationale and health-check inputs in sub-bullets, per `~/.claude/CLAUDE.md` Dependency Approval Process.
+- ユースケースごとに `##` 見出し。見出しは実装で使う自然な関数名(`### UC-<N>:` のような ID 接頭辞は禁止)。
+- 入出力は概要のみ。DTO の全フィールドや型シグネチャは書かない。
+- エラーは方針(どの条件で何を返すか・どの HTTP ステータスに対応するか)を書く。`enum` 定義は書かない。
 
-### 用語
+### ドメインモデル
 
-- Markdown table: `| 用語 | 定義 |`. One row per term, definition is one sentence.
-- Drop the section entirely when fewer than 3 new domain terms appear.
+- 集約・エンティティ・値オブジェクトは「名前・役割・主要な不変条件」を表で示す。型定義の全文は書かない。
+- 永続化されるデータはテーブル名と用途を示す。DDL は書かない。
+- 用語は Markdown 表 (`| 用語 | 定義 |`) で示す。
 
-### Bounded Context
+### インターフェース / ポート
 
-- Bullets answering: which existing domain crate hosts the feature, OR what new crate is added (with rationale).
-- Cite the relevant `architecture.md` section for the dependency-graph rule consulted.
+- ポートは「名前・種別 (Repository / Gateway / QueryService)・配置レイヤー・抽象する対象」を表で示す。メソッドシグネチャは書かない。
+- 配置レイヤーの根拠として `~/.claude/rules/architecture.md` の判断表を引く。
 
-### Use Case 一覧
+### 設計判断・トレードオフ
 
-- Each use case as `### <UseCaseName>` where `<UseCaseName>` is the natural function/struct name the implementation will use (e.g., `### IngestCountingEvents`). **No numeric ID prefix.** Body covers 入力 / 出力 / エラー variants as bullets or a small table.
-- Cross-bounded-context orchestration: name the central bounded context that owns the use case, list Gateway ports the central bounded context calls into the other bounded context through.
+- 判断ごとに採用案・却下案・理由を書く。少なくとも 2 案を提示し、推奨を明示する。
+- 案が 3 つ以上のときは各案を `####` 見出しに昇格する。
 
-### Port 一覧
+### データフロー図 / シーケンス図
 
-- Each port as `### <PortName> (Repository | Gateway | QueryService)`. **No numeric ID prefix.** The `<PortName>` is the natural trait name used in code (e.g., `### CountingEventRepository (Repository)`).
-- Body: signature in a fenced ` ```rust ` code block, placement layer + judgement-table citation as bullets, summary of what the port abstracts.
-- Trait-method `# Errors` clauses MUST list domain-error variants only — no infrastructure errors (`sqlx::Error`, `reqwest::Error`, etc.) per `~/.claude/rules/docstrings.md` "Trait-level / Method-level".
-
-### エラー型階層
-
-- Show the wrapping graph as a bulleted tree or a compact code block.
-- One sentence per error variant naming the domain meaning, not the infrastructure cause.
-
-### シーケンス図
-
-- Mermaid `sequenceDiagram` block. Caption above the block as one bullet describing the flow.
-- One diagram per non-obvious flow; do not draw obvious linear flows.
-
-### トレードオフ
-
-- For each option: `#### 案 <N>: <name>`, then bullets of pros / cons / cost / risk.
-- Final `#### 推奨` subsection with the chosen option and a one-sentence rationale.
-
-### Docstring 草案
-
-- Format defined verbatim in `~/.claude/agents/architect.md` "Port docstring drafts (Japanese, port-level only)". This file does not duplicate it. Drafts cover ports only; entity / use-case docstrings are written by `developer` from `~/.claude/rules/docstrings.md`.
-
-### タスク分解
-
-- Rendered as a **Markdown table** (`| スコープ | 受け入れ基準 | 依存タスク |`) with one row per task. **No ID column** — tasks are identified by their scope sentence. Multiple AC entries within a cell are separated by `<br>` and written as plain content (no `AC-N:` prefix).
-- The 依存タスク cell references prerequisite tasks by **content**, not by ID. Same-directory dependencies cite the prerequisite task's scope or a short paraphrase (e.g., 「`Clock` ポート定義」). Cross-directory dependencies cite the directory and the task content (e.g., 「`shared-kernel` の `Clock` ポート定義タスク」). Use 「なし」 when the task has no dependency.
-- Column definitions and worked example live in `~/.claude/agents/architect.md` "Task Decomposition" → "Required Section in the Design Document". This file does not duplicate them.
-- Do NOT render tasks as `###` subsections with bullet bodies; the table is the required shape.
-
-### 関連 ADR
-
-- Bullets of relative Markdown links: `[ADR-<NNNN> (Status)](../adr/<NNNN>-<title>.md) — <one-sentence relevance>`.
+- Mermaid ブロック。図の直前に 1 行のキャプションを置く。
+- 同期呼び出しには対応する戻り矢印を必ず描く。
 
 ## Severity Matrix
 
-`architect` uses this matrix when self-checking before declaring the design phase done. A future design-reviewer agent (if introduced) grades against the same matrix. Style findings always route to `architect` (the document is wholly architect-owned).
+`architect` uses this matrix when self-checking before declaring the design phase done. Style findings always route to `architect` (the documents are wholly architect-owned).
 
 | Observation | Severity |
 |---|---|
-| Required Section missing | 🔴 |
-| Required Sections out of canonical order without an inline reordering note | 🟡 |
-| Port introduced without placement layer annotation OR without citing the architecture.md judgement table | 🔴 |
-| Port `# Errors` clause referencing infrastructure error types (`sqlx::Error`, `reqwest::Error`, etc.) | 🔴 |
-| Use case missing input / output / error breakdown | 🔴 |
-| トレードオフ presents fewer than 2 options OR omits the recommendation | 🔴 |
+| Design document contains a full type signature, an error `enum` definition, or a SQL/DDL body | 🔴 |
+| Design document contains a docstring draft | 🔴 |
+| クレート設計書ディレクトリに `README.md` 入口がない | 🔴 |
+| 基本設計書 (`docs/design/overview/`) が必要な変更で作成・更新されていない | 🔴 |
+| クレート種別のテンプレートで必須の topic が欠落している | 🔴 |
+| トレードオフが 2 案未満、または推奨を欠く | 🔴 |
 | Enumeration of 2+ items written as prose instead of a bulleted list | 🔴 |
 | Multiple sentences on a single line without `  ` hard-break | 🔴 |
-| 用語 list rendered as bullets instead of a Markdown table | 🟡 |
-| タスク分解 rendered as `###` subsections / bullets instead of a Markdown table | 🟡 |
-| タスク分解テーブルが ID 列(`T-N`)を含む、または受け入れ基準が `AC-N:` 等の ID プレフィックス付きで書かれている | 🔴 |
-| Use Case 見出しが `### UC-<N>:` 等の ID プレフィックス付き(自然な関数名のみで参照すべき) | 🔴 |
-| Port 見出しが `### P-<N>:` 等の ID プレフィックス付き(自然な trait 名のみで参照すべき) | 🔴 |
-| トレードオフ presents options as one prose paragraph instead of `#### 案 <N>` subsections | 🟡 |
-| Coined kanji compound (`依存集約点`, `組み立て中枢`) instead of a verb phrase or backticked English | 🟡 |
-| Direct-translation calque (「〜することが可能」「〜が行われる」「〜の導入を実施した」) | 🟡 |
+| Use Case / Port 見出しが `### UC-<N>:` / `### P-<N>:` 等の ID 接頭辞付き | 🔴 |
+| Port が種別 / 配置レイヤーの注記なしで導入されている | 🟡 |
+| Use case が入出力の概要またはエラー方針を欠く | 🟡 |
+| 用語が表でなく箇条書きで書かれている | 🟡 |
 | Top-level bullet whose subject is a code identifier instead of a role / behavior | 🟡 |
-| Parenthetical packing 3+ related identifiers (or 2+ categories) instead of sub-bullets | 🟡 |
+| Parenthetical packing 3+ related identifiers instead of sub-bullets | 🟡 |
+| Coined kanji compound, direct-translation calque, or forced kanji for an industry-standard katakana term | 🟡 |
 | Section with 3+ thematic subgroups uses prose lead-ins instead of `###` sub-headings | 🟡 |
-| English noun phrase in Japanese prose where natural Japanese exists (outside backticks) | 🟡 |
-| Forced kanji translation of an industry-standard katakana term (`接続点` for `port`, etc.) | 🟡 |
-| Bullet with 3+ sentences without being split | 🟡 |
-| シーケンス図 lacks a one-sentence caption | 💭 |
+| シーケンス図 lacks a one-sentence caption OR has unpaired call/return arrows | 🟡 |
 | Lead-in sentence longer than one sentence | 💭 |
