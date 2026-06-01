@@ -1,7 +1,7 @@
 ---
 paths:
   - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
-  - "docs/design/**"
+  - "docs/spec/**"
   - "docs/pr/**"
   - "docs/adr/**"
 ---
@@ -408,7 +408,7 @@ Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer
 
 - Authoritative reference for deciding the layer of Use Cases, ports, and error types.
 - "Interface Placement Rule" and "What Belongs in Each Layer" drive design decisions.
-- When a `docs/design/<bounded-context>/` directory explains layer structure or port placement, cite the relevant sections of this document.
+- When a `docs/spec/<capability>/` directory explains layer structure or port placement, cite the relevant sections of this document.
 
 ### developer
 
@@ -424,7 +424,7 @@ Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer
 ### pr-writer
 
 - Not a primary reader of this document.
-- When a design document cites a section here, preserve the citation in the PR document as-is.
+- When a spec document cites a section here, preserve the citation in the PR document as-is.
 
 ---
 
