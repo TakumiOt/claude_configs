@@ -4,9 +4,9 @@
 
 - Chat responses to the user: **Japanese**.
 - Code, identifiers, and code comments: **English**.
-- Design documents (`docs/design/**`), PR documents (`docs/pr/**`), and ADRs (`docs/adr/**`): **Japanese**. Code snippets inside them stay in English.
+- Specification documents (`docs/spec/**`), PR documents (`docs/pr/**`), and ADRs (`docs/adr/**`): **Japanese**. Code snippets inside them stay in English.
 - Agent definition files (`~/.claude/agents/**.md`): **English**.
-- **Japanese prose quality** (chat + Japanese documents — PR / design / ADR). The goal is "write in Japanese", not "translate from English". Four sub-rules:
+- **Japanese prose quality** (chat + Japanese documents — PR / spec / ADR). The goal is "write in Japanese", not "translate from English". Four sub-rules:
   - **No JP/EN code-mixing**. Code identifiers (file paths, function / type / crate / module / env-var names) stay native inside backticks; everything else flows in Japanese. When citing a section heading from an English rule file, write 「日本語の説明 (`English heading`)」 — never the reverse. Generic-term substitutions: "smell" → アンチパターン, "top-level bullet" → 最上位の箇条書き, "code identifier" → 識別子, "cross-cutting" → 横断的な, "Bad / Good" → 悪い例 / 良い例.
   - **Use established katakana loanwords for tech terms** rather than coining kanji translations. `port` → ポート (not 接続点), `placeholder` → プレースホルダ (not 仮置き), `workspace` → ワークスペース, `shim` → シム, `composition root` → コンポジションルート, `scope creep` → スコープクリープ, `boilerplate` → ボイラープレート, `fixture` → フィクスチャ. Decision rule: if the industry uses the katakana form in modern Japanese tech writing, use it; if no settled Japanese form exists, default to katakana over a forced kanji translation.
   - **Do not coin new kanji compounds**. If no idiomatic Japanese term exists for a concept, use a descriptive verb phrase OR keep the English term in backticks with a one-line gloss on first mention. Bad: 「依存集約点」「組み立て中枢」「過渡的な置き場」「状態保持機構」. Good: 「依存を一元定義する場所」, 「`composition root` (依存の組み立てを行う起点)」, 「移行期間中のコードの置き場」, 「状態を保持する仕組み」.
@@ -22,21 +22,21 @@ IMPORTANT: Development work is routed onto one of three execution paths. Pick th
 - Read-only investigation: answering questions, explaining code, `git status` / `git diff` / `git log`.
 - Agent definition maintenance itself (editing files under `~/.claude/agents/` and `~/.claude/rules/`).
 
-**Path B — Lightweight (`developer` + `code-reviewer` only)**: small, scoped changes that meet ALL trigger criteria in the "Lightweight Path (Path B)" section below. Skips `architect`, `pr-writer`, `pr-reviewer`, design doc, PR doc, and task decomposition.
+**Path B — Lightweight (`developer` + `code-reviewer` only)**: small, scoped changes that meet ALL trigger criteria in the "Lightweight Path (Path B)" section below. Skips `architect`, `pr-writer`, `pr-reviewer`, spec doc, PR doc, and task decomposition.
 
 **Path C — Full Orchestration Loop (all five agents)**: the default for any non-trivial change that does not qualify for Path A or Path B. Path C is structured into three phases — design, per-task implementation loop, and PR aggregation. Detailed in the "Orchestration Loop (Path C, MANDATORY)" section below.
 
 Agents and their responsibilities:
 
-1. **architect** — Design phase. Produces **basic-design (基本設計)** documents: the system-wide `docs/design/overview/` and per-crate `docs/design/<crate>/` directories, plus standalone Task Decomposition documents at `docs/tasks/<work-name>.md`, where `<work-name>` is a kebab-case descriptor of what the tasks accomplish. Design documents stay at basic-design level — purpose, responsibility, functionality, structure — and never contain type signatures, error-enum definitions, DDL, or docstring drafts (detailed design lives in the code). A single feature may touch multiple crates and therefore update multiple directories. Does NOT write PR documents, does NOT decide PR aggregation, does NOT write implementation code.
-2. **developer** — Implementation phase. Implements **one task at a time** per invocation, scoped to that task's entry in the relevant `docs/tasks/<work-name>.md`. Reads `docs/design/<crate>/` for the crate the task belongs to, plus any cross-crate dependencies the task references (e.g. `docs/design/shared-kernel/`). Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Writes docstrings from scratch per `~/.claude/rules/docstrings.md` (design documents carry no drafts). Does NOT touch any PR document.
-3. **pr-writer** — PR authoring phase. Invoked when the main conversation aggregates one or more completed tasks into a PR. Creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch — there is no pre-filled skeleton. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`, grounded in **all bounded-context directories the bundled tasks touch**, the bundled task list, and the cumulative diff.
-4. **code-reviewer** — Code review phase. Invoked per task (Phase 2) — reviews the task's code changes for architecture compliance, dependency health, scope adherence (boundary = the task entry in the design doc), and business application concerns. Does NOT review PR documents and does NOT modify code.
-5. **pr-reviewer** — PR document review phase. Invoked per aggregation (Phase 3) — independently reviews `docs/pr/<feature>/<N>-<aggregation>.md` for style compliance against `~/.claude/rules/pr-style.md` AND factual consistency against the bundled task list, the cumulative diff, and **every bounded-context directory the bundled tasks touch**. Does NOT review code quality and does NOT modify the PR document.
+1. **architect** — Design phase. Produces and maintains the **living specification (仕様書)** at basic-design granularity: the system-wide `docs/spec/overview/` (全体仕様) and per-capability `docs/spec/<capability>/` directories (cross-cutting technical concerns in `docs/spec/_platform/`), plus standalone Task Decomposition documents at `docs/tasks/<work-name>.md`, where `<work-name>` is a kebab-case descriptor of what the tasks accomplish. Spec documents stay at basic-design granularity — purpose, responsibility, behavior, structure — and never contain type signatures, error-enum definitions, DDL, or docstring drafts (detailed design lives in the code). The architect drafts the spec forward at design time (target state) and reconciles it against the shipped implementation at merge (Phase 3); rationale ("why") lives in ADRs, not the spec. A single feature may touch multiple capabilities and therefore update multiple directories. Does NOT write PR documents, does NOT decide PR aggregation, does NOT write implementation code.
+2. **developer** — Implementation phase. Implements **one task at a time** per invocation, scoped to that task's entry in the relevant `docs/tasks/<work-name>.md`. Reads `docs/spec/<capability>/` for the capability the task belongs to, plus any cross-cutting dependencies the task references (e.g. `docs/spec/_platform/`). Writes tests and code across all Clean Architecture layers using BDD + Detroit-school TDD (Red → Green → Refactor). Writes docstrings from scratch per `~/.claude/rules/docstrings.md` (spec documents carry no drafts). Does NOT touch any PR document.
+3. **pr-writer** — PR authoring phase. Invoked when the main conversation aggregates one or more completed tasks into a PR. Creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch — there is no pre-filled skeleton. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`, grounded in **all capability spec directories the bundled tasks touch**, the bundled task list, and the cumulative diff.
+4. **code-reviewer** — Code review phase. Invoked per task (Phase 2) — reviews the task's code changes for architecture compliance, dependency health, scope adherence (boundary = the task entry in `docs/tasks/<work-name>.md`), and business application concerns. Does NOT review PR documents and does NOT modify code.
+5. **pr-reviewer** — PR document review phase. Invoked per aggregation (Phase 3) — independently reviews `docs/pr/<feature>/<N>-<aggregation>.md` for style compliance against `~/.claude/rules/pr-style.md` AND factual consistency against the bundled task list, the cumulative diff, and **every capability spec directory the bundled tasks touch**. Does NOT review code quality and does NOT modify the PR document.
 
 ### Lightweight Path (Path B)
 
-For small, scoped changes the main conversation invokes ONLY `developer` and `code-reviewer` — `architect`, `pr-writer`, `pr-reviewer`, the design document, the PR document, and task decomposition are all skipped.
+For small, scoped changes the main conversation invokes ONLY `developer` and `code-reviewer` — `architect`, `pr-writer`, `pr-reviewer`, the spec document, the PR document, and task decomposition are all skipped.
 
 **Trigger criteria — ALL must hold**:
 
@@ -50,7 +50,7 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 
 **Reduced flow**:
 
-1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any design directory (`docs/design/<bounded-context>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
+1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any spec directory (`docs/spec/<capability>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence against the change description. Findings route to `developer`.
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
 4. **Task completion checkpoint (MANDATORY)** — as soon as the Fix loop exits, the main conversation MUST report the completion summary to the user and wait for explicit confirmation before declaring the work done. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). Do NOT consider the work finished until the user responds. This is the same gate as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
@@ -66,42 +66,49 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 **Task properties**:
 
 - Atomic enough that one TDD Red→Green→Refactor cycle completes it.
-- Each task carries: a one-sentence scope, one or more acceptance criteria, and explicit task-level dependencies. **No identifiers** — neither tasks, ACs, use cases, nor ports carry numeric IDs. References across the design directory (and into the PR document) use the natural identifier of the thing being referenced: function name for use cases (`IngestCountingEvents`), trait name for ports (`CountingEventRepository`), scope sentence for tasks ("the task that defines the `Clock` port"). Cross-bounded-context dependencies cite the other directory by name (e.g., "`shared-kernel` の `Clock` ポート定義タスク").
+- Each task carries: a one-sentence scope, one or more acceptance criteria, and explicit task-level dependencies. **No identifiers** — neither tasks, ACs, use cases, nor ports carry numeric IDs. References across the spec directory (and into the PR document) use the natural identifier of the thing being referenced: function name for use cases (`IngestCountingEvents`), trait name for ports (`CountingEventRepository`), scope sentence for tasks ("the task that defines the `Clock` port"). Cross-capability dependencies cite the other directory by name (e.g., "`_platform` の `Clock` ポート定義タスク").
 - Sized qualitatively: typically ≤ 1 conceptual change and ≤ 3 modified files per task. If a proposed task clearly exceeds this, split it before handing off.
 - `developer` implements exactly one task per invocation. The main conversation passes the relevant task row (the scope sentence and its AC entries) to the developer in the invocation prompt. Future tasks are ignored even if visible from the current code path.
 
-**Documented in a standalone `docs/tasks/<work-name>.md`** — one per coherent unit of work, the filename a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation.md`), NOT a crate name. Owned by `architect`, separate from the basic-design documents and not governed by `design-doc-style.md`. There is **no per-task PR skeleton**: `architect` does not create or pre-fill any file under `docs/pr/`. PR documents are produced by `pr-writer` only when an aggregation is triggered (see Phase 3 below).
+**Documented in a standalone `docs/tasks/<work-name>.md`** — one per coherent unit of work, the filename a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation.md`), NOT a crate name. Owned by `architect`, separate from the spec documents and not governed by `spec-style.md`. There is **no per-task PR skeleton**: `architect` does not create or pre-fill any file under `docs/pr/`. PR documents are produced by `pr-writer` only when an aggregation is triggered (see Phase 3 below).
 
-**Documentation directory layout (MANDATORY)**: Design docs live under `docs/design/`. A system-wide `overview/` directory holds the basic design (基本設計書); each crate gets its own directory. Task Decomposition lives under `docs/tasks/`, one file per coherent unit of work with the filename describing what the tasks accomplish, separate from the design documents. PR docs remain grouped by **feature** (the deliverable unit). ADRs remain flat at `docs/adr/` because they are cross-cutting.
+**Documentation directory layout (MANDATORY)**: The living specification lives under `docs/spec/`, indexed by **capability**. A system-wide `overview/` directory holds the 全体仕様; each capability gets its own directory; cross-cutting technical concerns (infrastructure, shared kernel) live in `_platform/`. Task Decomposition lives under `docs/tasks/`, one file per coherent unit of work with the filename describing what the tasks accomplish, separate from the spec documents. PR docs remain grouped by **feature** (the deliverable unit). ADRs remain flat at `docs/adr/` because they are cross-cutting — and per the 時計分離 rule they are the home of all "why" (rationale / trade-offs).
 
 ```
 docs/
-├── design/
-│   ├── overview/                        # system-wide basic design (基本設計書)
-│   │   ├── README.md                    # purpose, actors, feature list, ToC
-│   │   └── <use-cases/architecture/design-decisions>.md
-│   ├── <crate-A>/                       # one directory per crate
-│   │   ├── README.md                    # entry point: purpose, scope, dependencies, ToC
-│   │   └── <template files>.md          # per the per-crate-kind templates in design-doc-style.md
-│   ├── shared-kernel/                   # cross-cutting crates get their own directory
-│   └── infrastructure/
+├── spec/                                # living specification (canonical, continuously maintained)
+│   ├── README.md                        # spec-tree map: structure, 時計分離 policy, capability list
+│   ├── overview/                        # system-wide 全体仕様
+│   │   ├── README.md                    # purpose, actors, capability list, 収録方針, ToC
+│   │   └── <use-cases/architecture>.md
+│   ├── <capability-A>/                  # one directory per capability
+│   │   ├── README.md                    # entry point: purpose, scope, 収録方針, ToC
+│   │   └── <behavior/data-and-constraints/implementation-map>.md
+│   └── _platform/                       # cross-cutting technical concerns (infra, kernel)
 ├── tasks/
-│   └── <work-name>.md                   # Task Decomposition; filename describes the work (NOT a design document)
-├── pr/<feature>/
-│   ├── 1-<aggregation-name>.md          # one file per PR aggregation; created by pr-writer
-│   ├── 2-<aggregation-name>.md          # ...
-│   └── ...
+│   ├── README.md                        # entry point: what this dir holds (Task Decomposition files), naming, ToC
+│   └── <work-name>.md                   # Task Decomposition; filename describes the work (NOT a spec document)
+├── pr/
+│   ├── README.md                        # entry point: PR docs grouped by feature, naming, ToC of features
+│   └── <feature>/
+│       ├── README.md                    # this feature's PRs in sequence, one line each
+│       ├── 1-<aggregation-name>.md      # one file per PR aggregation; created by pr-writer
+│       └── 2-<aggregation-name>.md      # ...
 └── adr/
-    └── NNNN-<kebab-title>.md            # cross-cutting ADRs (unchanged)
+    ├── README.md                        # entry point: what an ADR is, status lifecycle, chronological index
+    └── NNNN-<kebab-title>.md            # cross-cutting ADRs; home of all rationale ("why")
 ```
 
-Design directory rules:
+**README everywhere (MANDATORY)**: Every directory under `docs/` — `spec/` and its subdirectories, `tasks/`, `pr/` and each `<feature>/`, and `adr/` — carries a Japanese `README.md` entry point stating 目的・責務, 収録方針 (what documents belong there and what does NOT), and a 目次 (relative links to the directory's contents). Owners: `architect` for `spec/` / `tasks/` / `adr/`; `pr-writer` for `pr/` and each `<feature>/`. The `docs/adr/README.md` is the single chronological ADR index — the 全体仕様 links to it rather than keeping a separate index.
 
-- Design documents are **basic design (基本設計)** — purpose, responsibility, functionality, crate structure. Detailed design (type signatures, error-enum definitions, DDL, docstrings) lives in the code, not the docs.
-- Each crate directory MUST contain a `README.md` entry point with a table of contents. The file set follows the per-crate-kind templates in `~/.claude/rules/design-doc-style.md` (domain crate / cross-cutting technical crate / cross-cutting kernel crate).
-- `docs/design/overview/` holds the system-wide basic design and is updated whenever a feature changes system-level structure.
-- Task Decomposition lives in `docs/tasks/<work-name>.md` — a standalone file with its own format (`~/.claude/agents/architect.md`), not part of the design-document templates and not governed by `design-doc-style.md`.
-- Cross-crate references use relative Markdown links (e.g. `../shared-kernel/README.md`).
+Spec directory rules (full detail in `~/.claude/rules/spec-style.md`):
+
+- The spec is a **living document** describing what the system does now, at basic-design granularity. Detailed design (type signatures, error-enum definitions, DDL, docstrings) lives in the code; rationale / trade-offs live in ADRs.
+- The architect drafts the spec forward at design time (target state) and reconciles it at merge so the spec on a branch matches that branch's behavior.
+- Every directory under `docs/spec/` MUST contain a Japanese `README.md` entry point stating 目的・責務, 収録方針 (what documents belong there), and a 目次. The file set follows the per-spec-kind templates in `~/.claude/rules/spec-style.md` (全体仕様 / 能力仕様 / 横断・技術仕様).
+- `docs/spec/overview/` holds the 全体仕様 and is updated whenever a feature changes system-level structure.
+- Task Decomposition lives in `docs/tasks/<work-name>.md` — a standalone file with its own format (`~/.claude/agents/architect.md`), not part of the spec templates and not governed by `spec-style.md`.
+- Cross-directory references use relative Markdown links (e.g. `../_platform/README.md`).
 
 PR files use the PR sequence number as a prefix (`1-`, `2-`, ...). `<aggregation-name>` is a short kebab-case descriptor of what the PR ships. The feature name is implied by the directory and is NOT repeated in the file name. PR files are created at aggregation time, not upfront.
 
@@ -111,11 +118,12 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
 
 #### Phase 1 — Design
 
-1. **architect** → produces basic-design documents for **every crate the feature touches**:
-   - Per-crate: creates or updates `docs/design/<crate>/` with purpose / scope / use cases / domain model / interfaces / design decisions, following the per-crate-kind templates in `~/.claude/rules/design-doc-style.md`. Documents stay at basic-design level and never contain type signatures, error-enum definitions, DDL, or docstring drafts — those are the code's responsibility.
-   - System-wide: creates or updates `docs/design/overview/` (基本設計書) when the feature adds a crate, a cross-cutting decision, or a new system-level data flow.
+1. **architect** → drafts the spec forward (target state) for **every capability the feature touches**:
+   - Per-capability: creates or updates `docs/spec/<capability>/` with purpose / scope / behavior / data-and-constraints / implementation-map, following the per-spec-kind templates in `~/.claude/rules/spec-style.md`. Documents stay at basic-design granularity and never contain type signatures, error-enum definitions, DDL, or docstring drafts — those are the code's responsibility; rationale goes to ADRs.
+   - System-wide: creates or updates `docs/spec/overview/` (全体仕様) when the feature adds a capability, a cross-cutting decision, or a new system-level data flow.
+   - README convention: every touched `docs/spec/` directory carries a Japanese `README.md` entry point (目的・責務 / 収録方針 / 目次).
    - Task Decomposition: writes standalone Task Decomposition documents at `docs/tasks/<work-name>.md`, the filename describing the work (format defined in `~/.claude/agents/architect.md`).
-   - Cross-crate references point to the other directory via relative Markdown links instead of duplicating content.
+   - Cross-directory references point to the other directory via relative Markdown links instead of duplicating content.
    - Does NOT create any file under `docs/pr/`. Does NOT decide PR aggregation. Does NOT write implementation code.
 2. **Task Plan Report** → the main conversation reports the task list to the user (each task quoted by its scope sentence, plus dependencies and recommended order — no IDs). Proceed directly to Phase 2 UNLESS `architect` explicitly flags ambiguity (multiple plausible decompositions, unclear ordering, sensitive boundary) — in which case wait for explicit user feedback. The user may always intervene to revise the plan, but the default path no longer pauses.
 
@@ -123,10 +131,10 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
 
 For each task in dependency order (or in parallel when dependencies allow):
 
-1. **developer** → implements the current task via TDD. Reads `docs/design/<crate>/` for the crate that owns the task (whole-crate view) AND the task's entry in `docs/tasks/<work-name>.md`, plus any cross-crate dependencies the task references via relative links. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings from scratch per `~/.claude/rules/docstrings.md` (design documents carry no drafts). Reports the modified file list AND any deviation from the design with rationale. Does NOT touch any PR document.
-2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence (boundary = the task entry in the design doc). Findings route to `developer`. Returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
+1. **developer** → implements the current task via TDD. Reads `docs/spec/<capability>/` for the capability that owns the task (whole-capability view) AND the task's entry in `docs/tasks/<work-name>.md`, plus any cross-cutting dependencies the task references via relative links. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings from scratch per `~/.claude/rules/docstrings.md` (spec documents carry no drafts). Reports the modified file list AND any deviation from the spec with rationale. Does NOT touch any PR document.
+2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence (boundary = the task entry in `docs/tasks/<work-name>.md`). Findings route to `developer`. Returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
 3. **Task fix loop** — if `code-reviewer` returns any 🔴 blocker, OR any 🟡 suggestion the user has not explicitly deferred, re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain and all non-deferred 🟡 are addressed.
-4. **Task completion checkpoint (MANDATORY)** — as soon as a task exits its Task fix loop, the main conversation MUST report the task's completion summary to the user and wait for explicit confirmation before continuing. The report includes: the task's scope sentence, the modified file list, a one-line test/lint/build outcome, any design deviation surfaced (with rationale), and the proposed next action (next task in dependency order, or aggregation now if a Phase 3 trigger fires). Do NOT start the next task and do NOT move to Phase 3 until the user responds. The task is then complete and pending aggregation.
+4. **Task completion checkpoint (MANDATORY)** — as soon as a task exits its Task fix loop, the main conversation MUST report the task's completion summary to the user and wait for explicit confirmation before continuing. The report includes: the task's scope sentence, the modified file list, a one-line test/lint/build outcome, any spec deviation surfaced (with rationale), and the proposed next action (next task in dependency order, or aggregation now if a Phase 3 trigger fires). Do NOT start the next task and do NOT move to Phase 3 until the user responds. The task is then complete and pending aggregation.
 
 The per-task loop is lightweight: no PR document is touched, neither `pr-writer` nor `pr-reviewer` is invoked. Phase 2 may execute many tasks in succession before Phase 3 fires, but every task transition passes through the checkpoint above.
 
@@ -140,14 +148,15 @@ The main conversation decides when to bundle one or more completed (task-fix-loo
 
 For each aggregation:
 
-1. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads **every crate directory the bundled tasks touch** (`docs/design/<crate>/`), the list of tasks in this aggregation (their entries in the relevant `docs/tasks/<work-name>.md` documents), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 設計からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. The 関連ドキュメント section lists every bounded-context directory referenced. Reports the file path and any mismatch surfaced during self-check.
-2. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the bundled task list, the cumulative diff, and **every bounded-context directory the bundled tasks touch**). Findings route to `pr-writer` (prose), `architect` (design drift / task-list drift in any bounded-context directory), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
-3. **PR fix loop** — re-invoke whichever agent owns the change and re-run `pr-reviewer` until zero 🔴 remain and all non-deferred 🟡 are addressed. If `architect` revises the Task Decomposition during this loop (because the implementation deviated from the design in a way that requires the design to be updated), re-run `pr-reviewer` after the design update.
-4. The aggregation is then ready for the user to review and merge. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
+1. **Spec reconcile (MANDATORY before pr-writer)** → if the shipped implementation diverged from the forward-drafted spec, the main conversation re-invokes `architect` to reconcile `docs/spec/<capability>/` so the branch's spec matches the branch's behavior. This is the merge-gate forcing function that keeps the spec alive.
+2. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads **every capability spec directory the bundled tasks touch** (`docs/spec/<capability>/`), the list of tasks in this aggregation (their entries in the relevant `docs/tasks/<work-name>.md` documents), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. The 関連ドキュメント section lists every capability spec directory referenced. Reports the file path and any mismatch surfaced during self-check.
+3. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the bundled task list, the cumulative diff, and **every capability spec directory the bundled tasks touch**, including that the spec was reconciled to match the implementation). Findings route to `pr-writer` (prose), `architect` (spec drift / task-list drift in any capability spec directory), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
+4. **PR fix loop** — re-invoke whichever agent owns the change and re-run `pr-reviewer` until zero 🔴 remain and all non-deferred 🟡 are addressed. If `architect` reconciles the spec or revises the Task Decomposition during this loop (because the implementation deviated from the spec in a way that requires the spec to be updated), re-run `pr-reviewer` after the spec update.
+5. The aggregation is then ready for the user to review and merge. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
 
 The overall feature is complete when every task has exited its task fix loop AND every aggregation has exited its PR fix loop.
 
-When invoking the next agent, always pass the previous agent's output (design artifacts, the task's scope sentence in this invocation, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
+When invoking the next agent, always pass the previous agent's output (spec artifacts, the task's scope sentence in this invocation, modified file list, or review findings) as context — never ask the next agent to re-discover what the previous one already produced.
 
 The user is consulted **only** at these points (never between phases of the loop itself):
 
@@ -162,19 +171,19 @@ The user is consulted **only** at these points (never between phases of the loop
 
 A development task is NOT complete until every item below is true. The `developer` agent MUST verify this list before declaring work finished. `code-reviewer` MUST reject any hand-off that skips code-side items; `pr-reviewer` MUST reject any hand-off that skips PR-document items.
 
-On the Lightweight Path (Path B) the design / PR-document items are skipped — see "Lightweight Path (Path B)" above for the reduced checklist.
+On the Lightweight Path (Path B) the spec / PR-document items are skipped — see "Lightweight Path (Path B)" above for the reduced checklist.
 
-1. **Design artifacts exist**: For every crate the change touches, `docs/design/<crate>/` is written/updated as basic-design documents following the `~/.claude/rules/design-doc-style.md` per-crate-kind templates, and a standalone `docs/tasks/<work-name>.md` holds the Task Decomposition. The system-wide `docs/design/overview/` is updated when system-level structure changes. ADRs created when applicable.
-1a. **Task plan reported**: The task list (IDs, scope summaries, dependencies, order) has been reported to the user. User approval is required only when `architect` flagged decomposition ambiguity.
-1b. **PR documents exist per aggregation**: For each aggregation triggered in Phase 3, `docs/pr/<feature>/<N>-<aggregation>.md` exists and is fully populated by `pr-writer` (all sections — there is no `architect`-pre-filled portion). Style compliance against `~/.claude/rules/pr-style.md` and factual consistency against the bundled task list, the cumulative diff, and the design document are confirmed by `pr-reviewer`.
+1. **Spec artifacts exist and are reconciled**: For every capability the change touches, `docs/spec/<capability>/` is written/updated as living-spec documents following the `~/.claude/rules/spec-style.md` per-spec-kind templates (each directory carrying a Japanese `README.md` entry point), and a standalone `docs/tasks/<work-name>.md` holds the Task Decomposition. The system-wide `docs/spec/overview/` is updated when system-level structure changes. Every touched `docs/` directory carries its `README.md` entry point per "README everywhere" above (`docs/tasks/README.md` and `docs/adr/README.md` present and current). At the merge gate the spec is reconciled so it matches the shipped implementation. ADRs created when applicable (rationale lives there, not in the spec).
+1a. **Task plan reported**: The task list (scope summaries, dependencies, order — no IDs) has been reported to the user. User approval is required only when `architect` flagged decomposition ambiguity.
+1b. **PR documents exist per aggregation**: For each aggregation triggered in Phase 3, `docs/pr/<feature>/<N>-<aggregation>.md` exists and is fully populated by `pr-writer` (all sections — there is no `architect`-pre-filled portion), and the `docs/pr/README.md` and `docs/pr/<feature>/README.md` entry points are present and current. Style compliance against `~/.claude/rules/pr-style.md` and factual consistency against the bundled task list, the cumulative diff, and the spec document are confirmed by `pr-reviewer`.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
-4. **Docstrings present**: All public API elements have English docstrings, written from scratch per `~/.claude/rules/docstrings.md` (design documents carry no docstring drafts).
+4. **Docstrings present**: All public API elements have English docstrings, written from scratch per `~/.claude/rules/docstrings.md` (spec documents carry no docstring drafts).
 5. **Function size**: No function exceeds 50 lines.
 6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
 7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
 8. **Independent reviews passed**: BOTH `code-reviewer` (code / tests / docstrings / dependencies / scope adherence) AND `pr-reviewer` (PR document style + factual consistency) reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
-9. **Task completion checkpoint cleared**: After the task exits its fix loop, the main conversation has reported the completion summary to the user (scope, modified file list, test/lint/build outcome, any design deviation) and received explicit user confirmation. Defined by Path C Phase 2 step 4 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
+9. **Task completion checkpoint cleared**: After the task exits its fix loop, the main conversation has reported the completion summary to the user (scope, modified file list, test/lint/build outcome, any spec deviation) and received explicit user confirmation. Defined by Path C Phase 2 step 4 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
 
 ## Dependency Approval Process (MANDATORY)
 
@@ -187,7 +196,7 @@ Adding a new external library/crate/package requires explicit approval. No agent
    - Health check results: last release date, commit activity, GitHub stars, maintainer count, license, known CVEs
    - Impact on build time / binary size / transitive dependency count (if significant)
 3. **User approval**: Wait for explicit user approval before modifying `Cargo.toml` / `package.json` / `pyproject.toml` / etc. Silent dependency additions are prohibited.
-4. **Record**: Once approved, record the rationale in the relevant `docs/design/<bounded-context>/` directory (typically the bounded context that introduces the dependency), or as a dedicated ADR if the choice is load-bearing across multiple bounded contexts.
+4. **Record**: Once approved, record the rationale as a dedicated ADR in `docs/adr/` — dependency rationale is "why" and belongs in an ADR per the 時計分離 rule. The relevant `docs/spec/<capability>/` directory links to that ADR rather than restating the reasoning.
 5. **Review enforcement**: The `code-reviewer` agent MUST flag any dependency change not accompanied by an approval record as a 🔴 blocker.
 
 ## Git Operations
@@ -221,7 +230,7 @@ Detailed rules live in external files so this document stays short. All agents (
 - **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
 - **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
 - **PR style** (every task that touches `docs/pr/**`): `~/.claude/rules/pr-style.md` — Core Rule (Bullets First), Formatting Constraints, Per-Section Style, and the Severity Matrix used by `pr-reviewer`. Read by `pr-writer` (composition) and `pr-reviewer` (enforcement).
-- **Design doc style** (every task that touches `docs/design/**`): `~/.claude/rules/design-doc-style.md` — the basic-design principle (detailed design lives in code), the per-crate-kind document templates, Per-Section Style, and a Severity Matrix used by `architect` for self-check. Independent of `pr-style.md`.
+- **Spec style** (every task that touches `docs/spec/**`): `~/.claude/rules/spec-style.md` — the living-specification principle (current behavior in the spec, rationale in ADRs via 時計分離), the per-spec-kind document templates (全体仕様 / 能力仕様 / 横断・技術仕様), the per-directory README convention, the reconcile discipline, Per-Section Style, and a Severity Matrix used by `architect` for self-check and by `pr-reviewer` at the merge gate. Independent of `pr-style.md`.
 - **Language** (per project): `~/.claude/rules/<language>.md` — test layout, task runner, error idioms.
   - Rust → `~/.claude/rules/rust.md`
   - (Add a new file per language as needed.)
