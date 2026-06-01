@@ -15,7 +15,7 @@ This file is **independent of** `~/.claude/rules/pr-style.md`. The two address d
 Applies to every Markdown file under `docs/spec/`. Three kinds of documents:
 
 - **全体仕様** (`docs/spec/overview/`) — the system-wide specification. Why the system exists, who uses it, what capabilities it provides, how the crates map to those capabilities. One per repository.
-- **能力仕様** (`docs/spec/<capability>/`) — one directory per capability (a user-observable feature / behavior the system promises). The canonical axis of the spec.
+- **機能領域仕様** (`docs/spec/<capability>/`) — one directory per capability (a user-observable feature / behavior the system promises). The canonical axis of the spec.
 - **横断・技術仕様** (`docs/spec/_platform/`, and similar cross-cutting dirs) — cross-cutting technical concerns that are real but are not user-facing capabilities (infrastructure platform, shared kernel).
 
 `タスク分解` is **not** a spec document. It lives in a standalone `docs/tasks/<work-name>.md` with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
@@ -47,7 +47,7 @@ Three kinds of information have three different lifetimes; mixing them is what m
 
 ### 基本設計どまり (detailed design lives in code)
 
-仕様書は能力・振る舞いの粒度で書く。詳細設計はコードが真実の源。以下は書かない。
+仕様書は機能領域・振る舞いの粒度で書く。詳細設計はコードが真実の源。以下は書かない。
 
 - 型シグネチャの全文(`fn` シグネチャ・構造体フィールド一覧・トレイトメソッド本体)。
 - エラー `enum` 定義(variant ごとのコードブロック)。
@@ -96,9 +96,9 @@ Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / cons
   - **収録方針** — このディレクトリに**置くべきドキュメントと置くべきでないドキュメント**を明示する。各ファイルの役割を「ファイル名 → 何を書くか」の対応で示す。
   - **目次** — 配下のファイル / サブディレクトリへの相対 Markdown リンク。
 - **`docs/spec/README.md`(仕様書ツリーの最上位)** は上記に加えて以下を持つ:
-  - 仕様書全体の構造(`overview/` = 全体仕様、`<capability>/` = 能力仕様、`_platform/` = 横断・技術仕様)。
-  - 時計の分離方針(仕様書 / ADR / PR の住み分け)を 1 度だけ宣言し、各能力仕様はそれを繰り返さない。
-  - 能力一覧(各 `<capability>/` への相対リンク)。
+  - 仕様書全体の構造(`overview/` = 全体仕様、`<capability>/` = 機能領域仕様、`_platform/` = 横断・技術仕様)。
+  - 時計の分離方針(仕様書 / ADR / PR の住み分け)を 1 度だけ宣言し、各機能領域仕様はそれを繰り返さない。
+  - 機能領域一覧(各 `<capability>/` への相対リンク)。
 - README は**収録方針を述べる場所**であって、振る舞いそのものを書く場所ではない。具体的な振る舞いは各テンプレートファイルに置く。
 
 ## Document Structure
@@ -110,29 +110,29 @@ Across its files, the system-wide spec MUST cover:
 - システムの目的・責務 — why the system exists, the capability it delivers, what it does NOT do.
 - 想定ユーザー — the actors and how they authenticate.
 - ユーザーごとのユースケースと権限 — what each actor can do.
-- 能力一覧 — the capabilities the system provides (each links to its `docs/spec/<capability>/`).
+- 機能領域一覧 — the capabilities the system provides (each links to its `docs/spec/<capability>/`).
 - クレート構成と依存グラフ — the crate list and their dependency edges.
-- 能力とクレートのマッピング — どの能力をどのクレート群が実装するか(能力横断の全体像)。
+- 機能領域とクレートのマッピング — どの機能領域をどのクレート群が実装するか(機能領域横断の全体像)。
 - データフロー図 — the major flows that cross crates.
 - システム全体の設計判断 — `../adr/README.md`(唯一の ADR 索引)へのリンク (理由の本文は ADR 側; overview 側で索引を二重管理しない)。
 
-Recommended file layout: `README.md`(目的・責務・想定ユーザー・能力一覧・収録方針・目次)/ `use-cases.md` / `architecture.md`(構成・依存グラフ・能力マッピング・データフロー)。ADR の索引は `docs/adr/README.md` に一本化し、ここからリンクする。
+Recommended file layout: `README.md`(目的・責務・想定ユーザー・機能領域一覧・収録方針・目次)/ `use-cases.md` / `architecture.md`(構成・依存グラフ・機能領域マッピング・データフロー)。ADR の索引は `docs/adr/README.md` に一本化し、ここからリンクする。
 
-### 能力仕様 — `docs/spec/<capability>/`
+### 機能領域仕様 — `docs/spec/<capability>/`
 
-One directory per capability. `<capability>` は安定した能力記述子の kebab-case(マーケティング上の機能名ではなく、システムが約束する能力の名前)。
+One directory per capability. `<capability>` は安定した機能領域記述子の kebab-case(マーケティング上の機能名ではなく、システムが約束する機能領域の名前)。
 
-- `README.md` — 目的・このケーパビリティが何を約束するか・スコープ(扱う / 扱わない)・関連能力・収録方針・目次。
+- `README.md` — 目的・この機能領域が何を約束するか・スコープ(扱う / 扱わない)・関連する機能領域・収録方針・目次。
 - `behavior.md` — ユースケース / 振る舞い。各々の名前(自然な関数名)・目的・入出力の概要・エラー方針。
 - `data-and-constraints.md` — 不変条件・データの意味(用語集・永続化テーブルの用途)。DDL / 型シグネチャは書かない。
-- `implementation-map.md` — この能力を実装するクレート / ポートへの薄いポインタ(相対リンク)。「どこを読めばコードに辿り着くか」を示す。
+- `implementation-map.md` — この機能領域を実装するクレート / ポートへの薄いポインタ(相対リンク)。「どこを読めばコードに辿り着くか」を示す。
 
 A capability whose data model is trivial may merge `data-and-constraints.md` into `behavior.md`; the README states the reason. The README entry point is always required.
 
 ### 横断・技術仕様 — `docs/spec/_platform/`(および同種の横断ディレクトリ)
 
 - `README.md` — 扱う横断的関心の一覧と収録方針・目次。
-- `port-implementations.md` — 実装する全ポートの一覧(能力別)と永続化基盤。
+- `port-implementations.md` — 実装する全ポートの一覧(機能領域別)と永続化基盤。
 - `boundary-policy.md` — 境界変換(フレームワーク例外 → ドメインエラー)と識別子変換のポリシー。
 - `platform.md` — マイグレーション基盤・ロギング・デプロイ前提などの技術基盤。
 
@@ -178,7 +178,7 @@ The spec is alive only because the workflow forces it current. This is the make-
 
 - マージ時(Phase 3)に、PR の「仕様からの変更点」差分を仕様書へ反映し、**ブランチの仕様 == ブランチの振る舞い**にする。
 - `pr-reviewer` は DoD ゲートとして**仕様書と実装の整合**を必須チェックする。乖離は 🔴。
-- 能力が分割 / 統合されたら、`docs/spec/README.md` の能力一覧とディレクトリ構成を同じ変更で更新する(リンク切れを残さない)。
+- 機能領域が分割 / 統合されたら、`docs/spec/README.md` の機能領域一覧とディレクトリ構成を同じ変更で更新する(リンク切れを残さない)。
 - 仕様書が `main` の現実と一致しない記述を含むのは陳腐化であり、reconcile 漏れとして扱う。
 
 ## Severity Matrix
@@ -194,7 +194,7 @@ The spec is alive only because the workflow forces it current. This is the make-
 | `docs/spec/` 配下のディレクトリに `README.md` 入口がない | 🔴 |
 | `README.md` が収録方針(何を置くべきか)を記述していない | 🟡 |
 | 全体仕様 (`docs/spec/overview/`) が必要な変更で作成・更新されていない | 🔴 |
-| 能力仕様テンプレートで必須の topic が欠落している | 🔴 |
+| 機能領域仕様テンプレートで必須の topic が欠落している | 🔴 |
 | Enumeration of 2+ items written as prose instead of a bulleted list | 🔴 |
 | Multiple sentences on a single line without `  ` hard-break | 🔴 |
 | Use Case / 振る舞い見出しが `### UC-<N>:` 等の ID 接頭辞付き | 🔴 |

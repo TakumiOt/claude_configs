@@ -105,7 +105,7 @@ Spec directory rules (full detail in `~/.claude/rules/spec-style.md`):
 
 - The spec is a **living document** describing what the system does now, at basic-design granularity. Detailed design (type signatures, error-enum definitions, DDL, docstrings) lives in the code; rationale / trade-offs live in ADRs.
 - The architect drafts the spec forward at design time (target state) and reconciles it at merge so the spec on a branch matches that branch's behavior.
-- Every directory under `docs/spec/` MUST contain a Japanese `README.md` entry point stating 目的・責務, 収録方針 (what documents belong there), and a 目次. The file set follows the per-spec-kind templates in `~/.claude/rules/spec-style.md` (全体仕様 / 能力仕様 / 横断・技術仕様).
+- Every directory under `docs/spec/` MUST contain a Japanese `README.md` entry point stating 目的・責務, 収録方針 (what documents belong there), and a 目次. The file set follows the per-spec-kind templates in `~/.claude/rules/spec-style.md` (全体仕様 / 機能領域仕様 / 横断・技術仕様).
 - `docs/spec/overview/` holds the 全体仕様 and is updated whenever a feature changes system-level structure.
 - Task Decomposition lives in `docs/tasks/<work-name>.md` — a standalone file with its own format (`~/.claude/agents/architect.md`), not part of the spec templates and not governed by `spec-style.md`.
 - Cross-directory references use relative Markdown links (e.g. `../_platform/README.md`).
@@ -230,7 +230,7 @@ Detailed rules live in external files so this document stays short. All agents (
 - **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
 - **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
 - **PR style** (every task that touches `docs/pr/**`): `~/.claude/rules/pr-style.md` — Core Rule (Bullets First), Formatting Constraints, Per-Section Style, and the Severity Matrix used by `pr-reviewer`. Read by `pr-writer` (composition) and `pr-reviewer` (enforcement).
-- **Spec style** (every task that touches `docs/spec/**`): `~/.claude/rules/spec-style.md` — the living-specification principle (current behavior in the spec, rationale in ADRs via 時計分離), the per-spec-kind document templates (全体仕様 / 能力仕様 / 横断・技術仕様), the per-directory README convention, the reconcile discipline, Per-Section Style, and a Severity Matrix used by `architect` for self-check and by `pr-reviewer` at the merge gate. Independent of `pr-style.md`.
+- **Spec style** (every task that touches `docs/spec/**`): `~/.claude/rules/spec-style.md` — the living-specification principle (current behavior in the spec, rationale in ADRs via 時計分離), the per-spec-kind document templates (全体仕様 / 機能領域仕様 / 横断・技術仕様), the per-directory README convention, the reconcile discipline, Per-Section Style, and a Severity Matrix used by `architect` for self-check and by `pr-reviewer` at the merge gate. Independent of `pr-style.md`.
 - **Language** (per project): `~/.claude/rules/<language>.md` — test layout, task runner, error idioms.
   - Rust → `~/.claude/rules/rust.md`
   - (Add a new file per language as needed.)
