@@ -40,8 +40,6 @@
       "Bash(git -C * log:*)",
       "Bash(git -C * show:*)",
       "Bash(git -C * blame:*)",
-      "Bash(uv run pytest:*)",
-      "Bash(cargo make:*)",
       "Read(./.env.example)",
       "Read(~/.claude/rules/)",
       "Bash(docker compose:*)",
@@ -84,6 +82,18 @@
       "Bash(git -C * update-ref:*)",
       "Bash(git -C * symbolic-ref:*)",
       "Bash(git -C * hook:*)",
+      "Bash(git pull:*)",
+      "Bash(git revert:*)",
+      "Bash(git am:*)",
+      "Bash(git apply:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git submodule:*)",
+      "Bash(git -C * pull:*)",
+      "Bash(git -C * revert:*)",
+      "Bash(git -C * am:*)",
+      "Bash(git -C * apply:*)",
+      "Bash(git -C * filter-branch:*)",
+      "Bash(git -C * submodule:*)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf ~:*)",
       "Bash(rm -rf $HOME:*)",
@@ -218,13 +228,13 @@
     "disableBypassPermissionsMode": "disable"
   },
   "hooks": {
-    "Notification": [
+    "PreToolUse": [
       {
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command \"[console]::beep(1760,200); Start-Sleep -Milliseconds 80; [console]::beep(1760,200)\"",
-            "async": true
+            "command": "bash ~/.claude/scripts/block-cd.sh"
           }
         ]
       }
@@ -331,5 +341,6 @@
         "**/terraform.tfvars"
       ]
     }
-  }
+  },
+  "model": "claude-fable-5[1m]"
 }
