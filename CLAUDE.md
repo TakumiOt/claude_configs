@@ -55,13 +55,13 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
 4. **Task completion checkpoint (MANDATORY)** — as soon as the Fix loop exits, the main conversation MUST report the completion summary to the user and wait for explicit confirmation before declaring the work done. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). Do NOT consider the work finished until the user responds. This is the same gate as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
 
-**Reduced Definition of Done**: items 1, 1a, 1b, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, Task completion checkpoint cleared).
+**Reduced Definition of Done**: items 1, 1a, 1b, 1c, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, Task completion checkpoint cleared).
 
 **Scope-creep escape hatch**: If during Path B work the change grows beyond the trigger criteria (e.g., the refactor turns out to need a new port or a new use case), STOP, report the scope creep to the user, and switch to Path C — start over with `architect` rather than continuing on Path B.
 
 ### Task Decomposition (MANDATORY)
 
-`architect` decomposes every non-trivial feature into **Tasks** — atomic work units that `developer` consumes one at a time. Tasks are NOT required to be end-to-end mergeable; PR-level aggregation is decided by the main conversation in Phase 3, not by `architect`.
+`architect` decomposes every non-trivial feature into **Tasks** — atomic work units that `developer` consumes one at a time. **Two granularities, deliberately distinct**: a **Task** is atomic (one TDD Red→Green→Refactor cycle) and is NOT required to be end-to-end mergeable — it may leave the codebase in an intermediate state; a **PR** is a **vertical slice** that MUST be independently verifiable by exercising the running system (see Phase 3). PR-level aggregation is decided by the main conversation in Phase 3, not by `architect`. `architect` still orders tasks and shapes dependencies so they compose into verifiable vertical slices — the earliest possible slice should reach an exercisable end (a UI flow, a CLI command, an endpoint or use case wired through the composition root), rather than building every foundation layer before anything is runnable.
 
 **Task properties**:
 
@@ -140,11 +140,19 @@ The per-task loop is lightweight: no PR document is touched, neither `pr-writer`
 
 #### Phase 3 — Aggregation Gate and Per-PR Loop
 
-The main conversation decides when to bundle one or more completed (task-fix-loop-cleared) tasks into a PR. **Trigger an aggregation when ANY of the following hold**:
+The main conversation decides when to bundle completed (task-fix-loop-cleared) tasks into a PR. **A PR is a vertical slice: it MUST be independently verifiable by exercising the running system — a visible UI flow, a CLI command, or a use case/endpoint reachable end-to-end through the composition root — never a horizontal layer of plumbing.** A use case that exists in the code with no caller, or a port with no implementation wired to it, is NOT a shippable PR; hold those tasks until the slice that makes them observable is complete. ("Reachable from the adapter boundary" is no longer sufficient on its own — there must be a path to actually exercise the behavior.)
 
-- The completed tasks together deliver an observable behavior (a use case reachable from the adapter boundary, a CLI command, a visible UI flow).
+**Trigger an aggregation at the earliest point the pending bundle forms a verifiable vertical slice**, i.e. when ALL of the following hold:
+
+- The completed tasks together deliver a behavior a human (or an integration / E2E test) can exercise on the running system, reachable through the composition root — not merely present in the source.
+- The slice is reconciled and green (spec, tests, lint, build).
+
+**Prefer a thin slice over a fat one — ship sooner, not later.** Also aggregate immediately when:
+
 - The user explicitly signals to ship.
-- The pending bundle is approaching ~5 tasks, or the cumulative diff across the bundle has reached ~5 modified files / ~2 distinct concepts — aggregate now before the bundle grows further.
+- A verifiable slice is reached and the pending bundle is already approaching ~5 tasks or ~5 modified files / ~2 distinct concepts — do not let a slice grow fat.
+
+If foundational tasks pile up without yet forming a verifiable slice, that is a decomposition smell — re-examine whether the feature can be re-sliced so something runnable ships sooner, and escalate to `architect` if a re-slice is warranted.
 
 For each aggregation:
 
@@ -176,6 +184,7 @@ On the Lightweight Path (Path B) the spec / PR-document items are skipped — se
 1. **Spec artifacts exist and are reconciled**: For every capability the change touches, `docs/spec/<capability>/` is written/updated as living-spec documents following the `~/.claude/rules/spec-style.md` per-spec-kind templates (each directory carrying a Japanese `README.md` entry point), and a standalone `docs/tasks/<work-name>.md` holds the Task Decomposition. The system-wide `docs/spec/overview/` is updated when system-level structure changes. Every touched `docs/` directory carries its `README.md` entry point per "README everywhere" above (`docs/tasks/README.md` and `docs/adr/README.md` present and current). At the merge gate the spec is reconciled so it matches the shipped implementation. ADRs created when applicable (rationale lives there, not in the spec).
 1a. **Task plan reported**: The task list (scope summaries, dependencies, order — no IDs) has been reported to the user. User approval is required only when `architect` flagged decomposition ambiguity.
 1b. **PR documents exist per aggregation**: For each aggregation triggered in Phase 3, `docs/pr/<feature>/<N>-<aggregation>.md` exists and is fully populated by `pr-writer` (all sections — there is no `architect`-pre-filled portion), and the `docs/pr/README.md` and `docs/pr/<feature>/README.md` entry points are present and current. Style compliance against `~/.claude/rules/pr-style.md` and factual consistency against the bundled task list, the cumulative diff, and the spec document are confirmed by `pr-reviewer`.
+1c. **PR is a verifiable vertical slice**: Each aggregation forms a vertical slice that can be exercised on the running system end-to-end (a UI flow, a CLI command, or a use case/endpoint reachable through the composition root) — not a horizontal layer with no caller. The PR document's テスト section shows how the slice is verified (integration / E2E / manual when no automated path exists), and its 受け入れ基準 are demonstrable on the running system, not only in unit tests.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
 3. **Task runner green**: Full test + lint + build via the project's task runner (Rust: `cargo make test` / `cargo make lint` / `cargo make build` — never bare `cargo test`). Zero warnings.
 4. **Docstrings present**: All public API elements have English docstrings, written from scratch per `~/.claude/rules/docstrings.md` (spec documents carry no docstring drafts).
@@ -227,6 +236,7 @@ Agent files (`~/.claude/agents/*.md`) contain the detailed per-layer rules — t
 
 Detailed rules live in external files so this document stays short. All agents (`architect`, `developer`, `pr-writer`, `code-reviewer`, `pr-reviewer`) MUST `Read` the relevant files before starting work. Language-specific files override general guidance on conflict.
 
+- **Architecture** (every development task): `~/.claude/rules/architecture.md` — layer responsibilities, interface placement rules (Repository / Gateway / QueryService), per-layer review observations, layered error types, severity matrix for architecture-level findings.
 - **Testing** (every task): `~/.claude/rules/testing.md` — BDD + Detroit school rules, Fake / Stub / Boundary Mock taxonomy, per-layer allowed-doubles table, unit vs. integration responsibilities, review severity matrix.
 - **Docstrings** (tasks touching public API): `~/.claude/rules/docstrings.md` — required structure, prohibited patterns, port-trait specifics, severity matrix.
 - **PR style** (every task that touches `docs/pr/**`): `~/.claude/rules/pr-style.md` — Core Rule (Bullets First), Formatting Constraints, Per-Section Style, and the Severity Matrix used by `pr-reviewer`. Read by `pr-writer` (composition) and `pr-reviewer` (enforcement).
@@ -258,7 +268,7 @@ When updating any of the three, verify the change belongs to that file's respons
 
 ### 3. Severity matrix placement
 
-Every rule file that a reviewer agent (`code-reviewer` or `pr-reviewer`) consults for grading (currently `testing.md`, `docstrings.md`, `architecture.md`, `pr-style.md`) MUST expose its severity matrix at the **bottom of the file under a `## Severity Matrix` heading** (consistent name and location). The reviewer agents rely on a predictable anchor — do not scatter severity rules mid-document.
+Every rule file that a reviewer agent (`code-reviewer` or `pr-reviewer`) consults for grading (currently `testing.md`, `docstrings.md`, `architecture.md`, `rust.md`, `pr-style.md`, `spec-style.md`) MUST expose its severity matrix at the **bottom of the file under a `## Severity Matrix` heading** (consistent name and location). The reviewer agents rely on a predictable anchor — do not scatter severity rules mid-document.
 
 ### 4. Conflict resolution between overlapping rules
 
