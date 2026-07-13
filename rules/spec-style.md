@@ -18,7 +18,7 @@ Applies to every Markdown file under `docs/spec/`. Three kinds of documents:
 - **機能領域仕様** (`docs/spec/<capability>/`) — one directory per capability (a user-observable feature / behavior the system promises). The canonical axis of the spec.
 - **横断・技術仕様** (`docs/spec/_platform/`, and similar cross-cutting dirs) — cross-cutting technical concerns that are real but are not user-facing capabilities (infrastructure platform, shared kernel).
 
-`タスク分解` is **not** a spec document. It lives in a standalone `docs/tasks/<work-name>.md` with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
+`タスク分解` is **not** a spec document. It lives in a `docs/tasks/<work-name>/` directory (a README backlog index plus one PBI file per slice) with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
 
 ADR files (`docs/adr/<NNNN>-<title>.md`) and PR files (`docs/pr/**`) follow their own templates and are not covered here.
 

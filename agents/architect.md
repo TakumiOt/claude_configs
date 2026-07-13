@@ -35,14 +35,14 @@ If no file exists for the current language, fall back to the general guidance in
   - Integration points with existing code or external systems
   - Dependency additions: if a new library/crate is likely needed, surface it and get user approval during the design phase (not during implementation)
 
-  Document the clarified requirements in the relevant `docs/spec/<capability>/` documents in Japanese (purpose / scope in `README.md`, actors and use cases per the templates; system-level actors in `docs/spec/overview/`). Acceptance criteria are recorded in each task's row in `docs/tasks/<work-name>.md`. The `developer` agent will treat these as the basis for Definition of Done.
+  Document the clarified requirements in the relevant `docs/spec/<capability>/` documents in Japanese (purpose / scope in `README.md`, actors and use cases per the templates; system-level actors in `docs/spec/overview/`). Acceptance criteria are recorded at two levels under `docs/tasks/<work-name>/`: slice-level in each PBI file, task-level in each task's row. The `developer` agent will treat these as the basis for Definition of Done.
 - **Required deliverables for every design task** (all at **basic-design level** — no type signatures, no error-`enum` definitions, no DDL, no docstring drafts; detailed design lives in the code):
   1. Bounded contexts / crate boundaries and aggregate boundaries.
   2. Use case list — name, purpose, input/output summary, error policy (no DTO field lists).
   3. Port list — each port's name, kind (Repository / Gateway / QueryService), placement layer (Entity / Use Case), and what it abstracts, with the reason referencing `architecture.md`. Method signatures are NOT specified here; `developer` designs them in code during TDD.
   4. Domain error policy — which layer owns which error type (`DomainError` in Entities, `UseCaseError` wrapping it in Use Cases) and the HTTP mapping. The `enum` definitions themselves are written in code.
   5. At least two options with trade-offs, and a recommendation with rationale.
-  6. **Task Decomposition** (see the dedicated section below): a standalone `docs/tasks/<work-name>.md` structured as **PBIs** (verifiable vertical slices with slice-level acceptance criteria; one PBI = one future PR), each holding a Markdown table of atomic tasks with scope, realized spec behavior (対応する仕様), AC, and dependencies. **No IDs** — PBIs are identified by their slice sentence, tasks by their scope sentence; AC are written as plain content; dependencies cite prerequisite tasks by content. Tasks are NOT end-to-end mergeable units; you decide the slice shapes here, while ship timing stays with the main conversation in Phase 3. You do NOT create any file under `docs/pr/`.
+  6. **Task Decomposition** (see the dedicated section below): a `docs/tasks/<work-name>/` directory of **PBIs** (verifiable vertical slices with slice-level acceptance criteria; one PBI = one file = one future PR), each file holding a Markdown table of atomic tasks with scope, realized spec behavior (対応する仕様), AC, and dependencies. **No IDs** — PBIs are identified by their slice sentence, tasks by their scope sentence; AC are written as plain content; dependencies cite prerequisite tasks by content. Tasks are NOT end-to-end mergeable units; you decide the slice shapes here, while ship timing stays with the main conversation in Phase 3. You do NOT create any file under `docs/pr/`.
 
 ## Output Persistence (MANDATORY)
 
@@ -54,8 +54,9 @@ All design artifacts MUST be written to files in the project repository. Do not 
   - `docs/adr/README.md` — the ADR directory entry point (Japanese). State 目的・責務 (what an ADR is, the home of all rationale per 時計分離), 収録方針 (`NNNN-<kebab-title>.md` naming, the status lifecycle Proposed / Accepted / Deprecated / Superseded, append-only), and a 目次 = chronological index of all ADRs (番号・タイトル・ステータス). This is the single ADR index; the 全体仕様 links here rather than keeping its own. Create / update it whenever you add an ADR.
   - `docs/spec/overview/` — the system-wide 全体仕様. Create / update when a feature changes system-level structure (a new capability, a cross-cutting decision, a new system-level flow).
   - `docs/spec/<capability>/` — per-capability spec directories; cross-cutting technical concerns (infrastructure, shared kernel) live in `docs/spec/_platform/`. Each directory contains a Japanese `README.md` entry point (目的・責務 / 収録方針 / 目次) plus the files defined by the per-spec-kind templates in `~/.claude/rules/spec-style.md`. A feature that touches multiple capabilities updates multiple directories; cross-directory references use relative Markdown links.
-  - `docs/tasks/<work-name>.md` — the Task Decomposition. `<work-name>` is a kebab-case descriptor of what the tasks accomplish, not a crate name. A standalone file, separate from the spec documents.
-  - `docs/tasks/README.md` — the tasks directory entry point (Japanese). State 目的・責務 (holds Task Decomposition documents, one file per coherent unit of work — NOT spec documents), 収録方針 (kebab-case work-descriptor filenames, the table format defined in this agent file), and a 目次 = links to the current Task Decomposition files. Create / update it whenever you add or rename a task file.
+  - `docs/tasks/<work-name>/` — the Task Decomposition directory. `<work-name>` is a kebab-case descriptor of what the tasks accomplish, not a crate name. Holds a Japanese `README.md` backlog index plus one PBI file per slice (`<N>-<pbi-slug>.md`), separate from the spec documents.
+  - `docs/tasks/<work-name>/README.md` — the backlog index (Japanese). State 目的・責務 (what this work delivers, in one line), 収録方針 (one PBI per file, `<N>-<pbi-slug>.md` naming with `<N>` = ship order), and a 目次 = the PBIs in ship order, one line each with a relative link and any cross-PBI dependency noted. Keep it current whenever PBIs are added, re-sliced, or renamed.
+  - `docs/tasks/README.md` — the tasks directory entry point (Japanese). State 目的・責務 (holds Task Decomposition directories, one per coherent unit of work — NOT spec documents), 収録方針 (kebab-case work-descriptor directory names, the PBI-file format defined in this agent file), and a 目次 = links to the current Task Decomposition directories. Create / update it whenever you add or rename a work directory.
   - `docs/pr/**` — **You do NOT create any file here.** PR documents are produced by `pr-writer` at aggregation time in Phase 3.
 - **Basic design only**: Spec documents stay at basic-design granularity. Do NOT put type signatures, error-`enum` definitions, SQL/DDL, or docstring drafts in any spec document — those are the code's responsibility; rationale / trade-offs go to ADRs, not the spec (`~/.claude/rules/spec-style.md` "Core Principle: Living Specification"). Refer to ports and types by name and role instead.
 - **Cross-references**: When an ADR is referenced from a spec document (or vice versa), use relative Markdown links so navigation works in any Markdown viewer.
@@ -160,38 +161,36 @@ If a proposed task clearly breaches these signals, split it before listing it. T
 
 ### Task Decomposition File
 
-Write the Task Decomposition into a standalone **`docs/tasks/<work-name>.md`** — one file per coherent unit of work, with `<work-name>` a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation.md`) so the file's purpose is clear from its name alone; never a crate name. Separate from the spec documents and not governed by `spec-style.md`.
+Write the Task Decomposition into a **`docs/tasks/<work-name>/` directory** — one directory per coherent unit of work, with `<work-name>` a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation/`) so the purpose is clear from the name alone; never a crate name. Separate from the spec documents and not governed by `spec-style.md`.
 
-Structure the file as **one `## PBI: <slice sentence>` section per PBI, in recommended ship order**. Each section holds the PBI's slice-level acceptance criteria as bullets, then a **Markdown table** with one row per task. Each row carries scope, realized spec behavior, acceptance criteria, and dependencies — **no ID column**. This PBI-grouped shape is the canonical form `developer`, `code-reviewer`, `pr-writer`, and `pr-reviewer` consume, and the PBI list is what the user approves at the design gate.
+The directory holds a Japanese **`README.md` backlog index** plus **one file per PBI**, named `<N>-<pbi-slug>.md` — `<N>` is the ship order (1-indexed; the future PR sequence usually mirrors it), `<pbi-slug>` a short kebab-case descriptor of the slice. Each PBI file carries the slice sentence as its title, the slice-level acceptance criteria, then a **Markdown table** with one row per task. Each row carries scope, realized spec behavior, acceptance criteria, and dependencies — **no ID column**. This one-PBI-one-file shape is the canonical form `developer`, `code-reviewer`, `pr-writer`, and `pr-reviewer` consume, and the backlog index + PBI files are what the user approves at the design gate.
+
+Example — `docs/tasks/people-counting/1-single-camera-cli.md`:
 
 ```markdown
-## PBI: カメラ 1 台の人数を CLI で表示できる
+# PBI: カメラ 1 台の人数を CLI で表示できる
 
-受け入れ基準:
+## 受け入れ基準
 
 - `count --camera 1` を実行すると現在人数が標準出力に表示されること。
+
+## タスク分解
 
 | スコープ | 対応する仕様 | 受け入れ基準 | 依存タスク |
 |---|---|---|---|
 | 〜〜の port を定義する | `CountPeople` | 〜〜できること | なし |
 | 〜〜の repository 実装を追加する | `CountPeople` | 〜〜<br>〜〜のときエラー `Foo` を返すこと | 〜〜の port を定義するタスク |
 | 〜〜ユースケースの happy path を実装する | `CountPeople` | 〜〜<br>〜〜 | 〜〜の port を定義するタスク |
-
-## PBI: 複数カメラの合計人数を集計できる
-
-受け入れ基準:
-
-- ...
 ```
 
-Section and column rules:
+File and column rules:
 
-- **`## PBI:` heading** — the PBI's slice sentence (user-observable outcome). The slice sentence IS the PBI's identity; the future PR file's `<aggregation-name>` derives from it.
+- **`# PBI:` title** — the PBI's slice sentence (user-observable outcome). The slice sentence IS the PBI's identity; the future PR file's `<aggregation-name>` derives from the same slice.
 - **PBI 受け入れ基準** — slice-level, demonstrable on the running system (see "PBI Definition"). `pr-writer` later quotes these as the lead group of the PR document's 受け入れ基準 section.
 - **スコープ** — one sentence summarizing the single conceptual change. The scope sentence IS the task's identity; it is what other tasks cite when declaring dependencies and what the main conversation passes to `developer` when invoking implementation. If you find yourself writing "and also", split the task into two rows.
 - **対応する仕様** — the spec anchor the task realizes: the behavior / use case name from the owning `docs/spec/<capability>/` directory (e.g. `IngestCountingEvents`), or the port / cross-cutting concern for `_platform` work (e.g. 「`Clock` ポート」). Wiring / composition tasks cite the behavior they make exercisable. This column is what makes spec coverage checkable at the design gate — a task with no spec anchor signals either speculative work or a spec gap; resolve it before reporting.
 - **受け入れ基準** — one or more acceptance criteria as plain content (no `AC-N:` / `AC-<task>-<n>:` prefixes — IDs were globally retired). Multiple criteria are separated by `<br>` so each criterion keeps its own visual line within the cell. Each criterion must be measurable and verifiable. `pr-writer` later quotes these verbatim under task-scope `###` headings in the PR document's 受け入れ基準 section.
-- **依存タスク** — prerequisite tasks cited **by content**: same-directory dependencies use the prerequisite's scope sentence (or a short paraphrase), cross-directory dependencies use 「`<other-directory>` の <スコープ要約>タスク」. Use 「なし」 when the task is independent. Multiple dependencies are separated by 「、」.
+- **依存タスク** — prerequisite tasks cited **by content**: same-PBI dependencies use the prerequisite's scope sentence (or a short paraphrase); cross-PBI dependencies use 「PBI「<スライス文>」の <スコープ要約>タスク」, optionally with a relative link to that PBI file. Use 「なし」 when the task is independent. Multiple dependencies are separated by 「、」.
 
 Do NOT render tasks as `###` subsections with bullet bodies — the table is the required shape. If a task genuinely needs prose elaboration (rare), keep the table row authoritative and add a short note in a separate paragraph below the table referencing the row by quoting its scope sentence.
 
@@ -205,7 +204,7 @@ Per `~/.claude/CLAUDE.md`, the main conversation holds the **design gate**: it r
 - The PBI list in ship order — each PBI's slice sentence (quoted verbatim) with its slice-level acceptance criteria and its tasks (scope sentence, 対応する仕様, dependencies).
 - The spec-coverage map — each behavior in the touched spec directories paired with the tasks that realize it. Call out explicitly: spec behaviors with no realizing task, and tasks with no spec anchor.
 - The dependency graph (who blocks whom), citing prerequisite tasks by their scope sentence; call out tasks that can run in parallel.
-- The path(s) to the `docs/tasks/<work-name>.md` file(s) where the PBIs reside.
+- The path to the `docs/tasks/<work-name>/` directory, with its README backlog index and PBI files.
 - **Any decomposition ambiguity you are flagging** (and why) — the gate always waits for the user, so the flag's job is to direct their attention, not to trigger the pause. Flag it when, for example:
   - Multiple plausible slicings exist and the choice changes scope or risk meaningfully.
   - The PBI ordering depends on a user judgment (priority, business deadline) you cannot resolve from context.
