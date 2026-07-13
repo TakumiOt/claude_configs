@@ -42,7 +42,7 @@ If no file exists for the current language, fall back to the general guidance in
   3. Port list — each port's name, kind (Repository / Gateway / QueryService), placement layer (Entity / Use Case), and what it abstracts, with the reason referencing `architecture.md`. Method signatures are NOT specified here; `developer` designs them in code during TDD.
   4. Domain error policy — which layer owns which error type (`DomainError` in Entities, `UseCaseError` wrapping it in Use Cases) and the HTTP mapping. The `enum` definitions themselves are written in code.
   5. At least two options with trade-offs, and a recommendation with rationale.
-  6. **Task Decomposition** (see the dedicated section below): a standalone `docs/tasks/<work-name>.md` — a flat Markdown table of atomic tasks with scope, AC, and dependencies. **No IDs** — tasks are identified by their scope sentence; AC are written as plain content; dependencies cite prerequisite tasks by content. Tasks are NOT end-to-end mergeable units; PR aggregation is decided by the main conversation in Phase 3, not here. You do NOT create any file under `docs/pr/`.
+  6. **Task Decomposition** (see the dedicated section below): a standalone `docs/tasks/<work-name>.md` structured as **PBIs** (verifiable vertical slices with slice-level acceptance criteria; one PBI = one future PR), each holding a Markdown table of atomic tasks with scope, realized spec behavior (対応する仕様), AC, and dependencies. **No IDs** — PBIs are identified by their slice sentence, tasks by their scope sentence; AC are written as plain content; dependencies cite prerequisite tasks by content. Tasks are NOT end-to-end mergeable units; you decide the slice shapes here, while ship timing stays with the main conversation in Phase 3. You do NOT create any file under `docs/pr/`.
 
 ## Output Persistence (MANDATORY)
 
@@ -131,7 +131,14 @@ What becomes easier or harder because of this change?
 
 ## 🧩 Task Decomposition (MANDATORY)
 
-Every non-trivial feature must be decomposed into **Tasks** — atomic work units that the `developer` agent consumes one at a time. **Task and PR are two distinct granularities**: a Task is atomic (one TDD cycle) and is NOT required to be end-to-end mergeable; a PR (the aggregation unit) is a **vertical slice** that must be independently verifiable by exercising the running system. PR-level aggregation is decided by the main conversation in Phase 3 of `~/.claude/CLAUDE.md`'s Orchestration Loop, not here — but **you decompose so that tasks compose into verifiable vertical slices** (see Decomposition Principles below).
+Every non-trivial feature is decomposed in two steps: first into **PBIs** (Product Backlog Items) — verifiable vertical slices of user-observable value, each shipping as one PR — then each PBI into **Tasks** — atomic work units that the `developer` agent consumes one at a time. A Task is atomic (one TDD cycle) and is NOT required to be end-to-end mergeable; the **PBI** is the unit that must be independently verifiable by exercising the running system. You decide the slice shapes and their ship order here; the main conversation decides ship timing in Phase 3 of `~/.claude/CLAUDE.md`'s Orchestration Loop (a PBI ships when all its tasks complete and its slice-level acceptance criteria are demonstrable).
+
+### PBI Definition
+
+- A PBI is named by a **one-sentence, user-observable outcome** (e.g. 「カメラ 1 台の人数を CLI で表示できる」) — never by a layer or component (「リポジトリ層を実装する」 is not a PBI).
+- Each PBI carries **slice-level acceptance criteria**: behaviors a human (or an integration / E2E test) can exercise on the running system through the composition root. These are the 動作確認 criteria the user verifies at ship time; they are coarser than task-level AC and must not merely restate them.
+- Order PBIs by ship order. The first PBI is the thinnest end-to-end path from input to observable output (e.g. one camera, fixed config, minimal UI); later PBIs widen coverage, add configuration, handle more cases.
+- Keep PBIs thin: past ~5 tasks or ~2 distinct concepts, split. A PBI that is pure plumbing with no exercisable end is a decomposition smell — re-slice until every PBI has one.
 
 ### Task Sizing (qualitative)
 
@@ -146,29 +153,43 @@ If a proposed task clearly breaches these signals, split it before listing it. T
 ### Decomposition Principles
 
 - **One task = one TDD cycle of meaningful change.** Examples of well-sized tasks: introducing one port trait, implementing one entity invariant, adding one use case happy-path, adding one error variant and its handling, adding one repository implementation method.
-- **Tasks are NOT required to be end-to-end mergeable on their own.** They may leave the codebase in an intermediate state (e.g., a port without an implementation yet); the next task fills the gap. The aggregation gate decides when intermediate state becomes a shippable PR.
-- **Decompose toward verifiable vertical slices, not horizontal layers.** A PR (the aggregation unit) must be exercisable on the running system end-to-end. Order tasks and shape dependencies so the earliest possible slice reaches an exercisable end — a UI flow, a CLI command, or a use case/endpoint wired through the composition root — rather than building every port and use case across the whole feature before anything is runnable. When a foundational task cannot belong to any verifiable slice on its own, note in the Task Plan Report which later task closes the slice, so the orchestrator knows when a shippable PR first becomes possible. A long run of foundational tasks with no slice in sight is a decomposition smell — re-slice so something runnable ships sooner.
-- **Thin end-to-end first, then widen.** Order tasks so the first slice is the narrowest path from input to observable output (e.g. one camera, fixed config, minimal UI); subsequent slices widen coverage, add configuration, and handle more cases. Early tasks unblock that first runnable slice rather than completing a whole layer.
+- **Tasks are NOT required to be end-to-end mergeable on their own.** They may leave the codebase in an intermediate state (e.g., a port without an implementation yet); the next task in the same PBI fills the gap. The PBI is what must close into a shippable, exercisable slice.
+- **Every task belongs to exactly one PBI.** When a foundational task (a port definition, a shared type) serves several PBIs, place it in the first PBI that needs it; later PBIs cite it in their tasks' 依存タスク cells. The last task of a PBI typically wires the slice through the composition root so the slice-level acceptance criteria become demonstrable.
 - **Cross-domain tasks**: A task that modifies production code in two or more domain crates simultaneously is a smell. Prefer tasks scoped to a single domain crate plus the `infrastructure` / `app` wiring needed to make the test pass. When a feature genuinely spans bounded contexts, place the use case in the **central domain's** `usecase/` module per the architecture guide and treat the other domain as a Gateway port owned by the central domain. If two domain crates must change in production code within one task, **flag this as decomposition ambiguity** when reporting the task plan.
 - **Dependencies are explicit.** If task B requires task A complete first, cite task A by its scope sentence in B's 依存タスク cell. Tasks with no unmet dependencies may execute in parallel; by default assume sequential.
 
 ### Task Decomposition File
 
-Write the Task Decomposition into a standalone **`docs/tasks/<work-name>.md`** — one file per coherent unit of work, with `<work-name>` a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation.md`) so the file's purpose is clear from its name alone; never a crate name. Separate from the spec documents and not governed by `spec-style.md`. Render it as a **Markdown table** with one row per task. Each row carries scope, acceptance criteria, and dependencies — **no ID column**. No PR-level grouping is required (aggregation is the orchestrator's call). The table format keeps the whole task plan scannable on a single screen and is the canonical shape `developer`, `code-reviewer`, `pr-writer`, and `pr-reviewer` consume.
+Write the Task Decomposition into a standalone **`docs/tasks/<work-name>.md`** — one file per coherent unit of work, with `<work-name>` a kebab-case descriptor of what the tasks accomplish (e.g. `clock-and-id-generator-implementation.md`) so the file's purpose is clear from its name alone; never a crate name. Separate from the spec documents and not governed by `spec-style.md`.
+
+Structure the file as **one `## PBI: <slice sentence>` section per PBI, in recommended ship order**. Each section holds the PBI's slice-level acceptance criteria as bullets, then a **Markdown table** with one row per task. Each row carries scope, realized spec behavior, acceptance criteria, and dependencies — **no ID column**. This PBI-grouped shape is the canonical form `developer`, `code-reviewer`, `pr-writer`, and `pr-reviewer` consume, and the PBI list is what the user approves at the design gate.
 
 ```markdown
-## タスク分解
+## PBI: カメラ 1 台の人数を CLI で表示できる
 
-| スコープ | 受け入れ基準 | 依存タスク |
-|---|---|---|
-| 〜〜の port を定義する | 〜〜できること | なし |
-| 〜〜の repository 実装を追加する | 〜〜<br>〜〜のときエラー `Foo` を返すこと | 〜〜の port を定義するタスク |
-| 〜〜ユースケースの happy path を実装する | 〜〜<br>〜〜 | 〜〜の port を定義するタスク |
+受け入れ基準:
+
+- `count --camera 1` を実行すると現在人数が標準出力に表示されること。
+
+| スコープ | 対応する仕様 | 受け入れ基準 | 依存タスク |
+|---|---|---|---|
+| 〜〜の port を定義する | `CountPeople` | 〜〜できること | なし |
+| 〜〜の repository 実装を追加する | `CountPeople` | 〜〜<br>〜〜のときエラー `Foo` を返すこと | 〜〜の port を定義するタスク |
+| 〜〜ユースケースの happy path を実装する | `CountPeople` | 〜〜<br>〜〜 | 〜〜の port を定義するタスク |
+
+## PBI: 複数カメラの合計人数を集計できる
+
+受け入れ基準:
+
+- ...
 ```
 
-Column rules:
+Section and column rules:
 
+- **`## PBI:` heading** — the PBI's slice sentence (user-observable outcome). The slice sentence IS the PBI's identity; the future PR file's `<aggregation-name>` derives from it.
+- **PBI 受け入れ基準** — slice-level, demonstrable on the running system (see "PBI Definition"). `pr-writer` later quotes these as the lead group of the PR document's 受け入れ基準 section.
 - **スコープ** — one sentence summarizing the single conceptual change. The scope sentence IS the task's identity; it is what other tasks cite when declaring dependencies and what the main conversation passes to `developer` when invoking implementation. If you find yourself writing "and also", split the task into two rows.
+- **対応する仕様** — the spec anchor the task realizes: the behavior / use case name from the owning `docs/spec/<capability>/` directory (e.g. `IngestCountingEvents`), or the port / cross-cutting concern for `_platform` work (e.g. 「`Clock` ポート」). Wiring / composition tasks cite the behavior they make exercisable. This column is what makes spec coverage checkable at the design gate — a task with no spec anchor signals either speculative work or a spec gap; resolve it before reporting.
 - **受け入れ基準** — one or more acceptance criteria as plain content (no `AC-N:` / `AC-<task>-<n>:` prefixes — IDs were globally retired). Multiple criteria are separated by `<br>` so each criterion keeps its own visual line within the cell. Each criterion must be measurable and verifiable. `pr-writer` later quotes these verbatim under task-scope `###` headings in the PR document's 受け入れ基準 section.
 - **依存タスク** — prerequisite tasks cited **by content**: same-directory dependencies use the prerequisite's scope sentence (or a short paraphrase), cross-directory dependencies use 「`<other-directory>` の <スコープ要約>タスク」. Use 「なし」 when the task is independent. Multiple dependencies are separated by 「、」.
 
