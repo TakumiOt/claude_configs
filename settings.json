@@ -1,4 +1,8 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -40,40 +44,40 @@
       "Bash(git -C * log:*)",
       "Bash(git -C * show:*)",
       "Bash(git -C * blame:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git switch:*)",
+      "Bash(git branch:*)",
+      "Bash(git -C * add:*)",
+      "Bash(git -C * commit:*)",
+      "Bash(git -C * switch:*)",
+      "Bash(git -C * branch:*)",
       "Read(./.env.example)",
       "Read(~/.claude/rules/)",
       "Bash(docker compose:*)",
       "Bash(docker ps:*)"
     ],
     "deny": [
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
       "Bash(git push:*)",
+      "Bash(git -C * push:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
       "Bash(git merge:*)",
       "Bash(git checkout:*)",
-      "Bash(git switch:*)",
       "Bash(git restore:*)",
       "Bash(git stash:*)",
       "Bash(git cherry-pick:*)",
-      "Bash(git branch:*)",
       "Bash(git tag:*)",
       "Bash(git clean:*)",
       "Bash(git rm:*)",
       "Bash(git mv:*)",
-      "Bash(git -C * add:*)",
-      "Bash(git -C * commit:*)",
-      "Bash(git -C * push:*)",
       "Bash(git -C * reset:*)",
       "Bash(git -C * rebase:*)",
       "Bash(git -C * merge:*)",
       "Bash(git -C * checkout:*)",
-      "Bash(git -C * switch:*)",
       "Bash(git -C * restore:*)",
       "Bash(git -C * stash:*)",
       "Bash(git -C * cherry-pick:*)",
-      "Bash(git -C * branch:*)",
       "Bash(git -C * tag:*)",
       "Bash(git -C * clean:*)",
       "Bash(git -C * rm:*)",
@@ -235,6 +239,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/scripts/block-cd.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/scripts/git-guard.sh"
           }
         ]
       }

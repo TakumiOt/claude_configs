@@ -53,9 +53,9 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any spec directory (`docs/spec/<capability>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence against the change description. Findings route to `developer`.
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
-4. **Task completion checkpoint (MANDATORY)** — as soon as the Fix loop exits, the main conversation MUST report the completion summary to the user and wait for explicit confirmation before declaring the work done. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). Do NOT consider the work finished until the user responds. This is the same gate as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
+4. **Commit & completion report (MANDATORY)** — as soon as the Fix loop exits, the main conversation commits the change (one commit, per "Git Operations") and reports the completion summary to the user. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). No confirmation wait is required; pushing the branch is the user's job per "Git Operations". This is the same step as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
 
-**Reduced Definition of Done**: items 1, 1a, 1b, 1c, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, Task completion checkpoint cleared).
+**Reduced Definition of Done**: items 1, 1a, 1b, 1c, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings on any new/changed public API, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, commit & completion report done).
 
 **Scope-creep escape hatch**: If during Path B work the change grows beyond the trigger criteria (e.g., the refactor turns out to need a new port or a new use case), STOP, report the scope creep to the user, and switch to Path C — start over with `architect` rather than continuing on Path B.
 
@@ -114,7 +114,7 @@ PR files use the PR sequence number as a prefix (`1-`, `2-`, ...). `<aggregation
 
 ### Orchestration Loop (Path C, MANDATORY)
 
-For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. Except for the **Task Plan Report** checkpoint (which only blocks when `architect` flags ambiguity), do not pause to ask the user between phases.
+For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. Except for the **Task Plan Report** checkpoint (which only blocks when `architect` flags ambiguity) and the **aggregation hand-off** (Phase 3 step 5, where the user takes over for push and PR creation), do not pause to ask the user between phases.
 
 #### Phase 1 — Design
 
@@ -134,9 +134,9 @@ For each task in dependency order (or in parallel when dependencies allow):
 1. **developer** → implements the current task via TDD. Reads `docs/spec/<capability>/` for the capability that owns the task (whole-capability view) AND the task's entry in `docs/tasks/<work-name>.md`, plus any cross-cutting dependencies the task references via relative links. Implements only what that task's scope + AC require — future tasks are ignored. Writes docstrings from scratch per `~/.claude/rules/docstrings.md` (spec documents carry no drafts). Reports the modified file list AND any deviation from the spec with rationale. Does NOT touch any PR document.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence (boundary = the task entry in `docs/tasks/<work-name>.md`). Findings route to `developer`. Returns findings categorized as 🔴 blocker / 🟡 suggestion / 💭 nit.
 3. **Task fix loop** — if `code-reviewer` returns any 🔴 blocker, OR any 🟡 suggestion the user has not explicitly deferred, re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain and all non-deferred 🟡 are addressed.
-4. **Task completion checkpoint (MANDATORY)** — as soon as a task exits its Task fix loop, the main conversation MUST report the task's completion summary to the user and wait for explicit confirmation before continuing. The report includes: the task's scope sentence, the modified file list, a one-line test/lint/build outcome, any spec deviation surfaced (with rationale), and the proposed next action (next task in dependency order, or aggregation now if a Phase 3 trigger fires). Do NOT start the next task and do NOT move to Phase 3 until the user responds. The task is then complete and pending aggregation.
+4. **Task commit & report (MANDATORY)** — as soon as a task exits its Task fix loop, the main conversation commits it (one task = one commit, per "Git Operations") and reports the task's completion summary to the user. The report includes: the task's scope sentence, the modified file list, a one-line test/lint/build outcome, any spec deviation surfaced (with rationale), and the next action (next task in dependency order, or aggregation now if a Phase 3 trigger fires). Do NOT wait for confirmation — proceed directly; the user reviews at the aggregation checkpoint (Phase 3 step 5) and may interrupt at any time. The task is then complete and pending aggregation.
 
-The per-task loop is lightweight: no PR document is touched, neither `pr-writer` nor `pr-reviewer` is invoked. Phase 2 may execute many tasks in succession before Phase 3 fires, but every task transition passes through the checkpoint above.
+The per-task loop is lightweight: no PR document is touched, neither `pr-writer` nor `pr-reviewer` is invoked. Phase 2 may execute many tasks in succession before Phase 3 fires, but every task transition passes through the commit & report step above.
 
 #### Phase 3 — Aggregation Gate and Per-PR Loop
 
@@ -160,7 +160,7 @@ For each aggregation:
 2. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads **every capability spec directory the bundled tasks touch** (`docs/spec/<capability>/`), the list of tasks in this aggregation (their entries in the relevant `docs/tasks/<work-name>.md` documents), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. The 関連ドキュメント section lists every capability spec directory referenced. Reports the file path and any mismatch surfaced during self-check.
 3. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the bundled task list, the cumulative diff, and **every capability spec directory the bundled tasks touch**, including that the spec was reconciled to match the implementation). Findings route to `pr-writer` (prose), `architect` (spec drift / task-list drift in any capability spec directory), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
 4. **PR fix loop** — re-invoke whichever agent owns the change and re-run `pr-reviewer` until zero 🔴 remain and all non-deferred 🟡 are addressed. If `architect` reconciles the spec or revises the Task Decomposition during this loop (because the implementation deviated from the spec in a way that requires the spec to be updated), re-run `pr-reviewer` after the spec update.
-5. The aggregation is then ready for the user to review and merge. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
+5. **Aggregation hand-off (MANDATORY)** — the main conversation reports the aggregation summary to the user and stops: the bundled tasks (scope sentences), the PR document path, the end-to-end behavior the slice makes exercisable, the branch name, the commit list (`git log --oneline`), and a diffstat. Push, PR creation (`gh pr create`), and merge are the user's review workflow, done on their side. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
 
 The overall feature is complete when every task has exited its task fix loop AND every aggregation has exited its PR fix loop.
 
@@ -169,7 +169,7 @@ When invoking the next agent, always pass the previous agent's output (spec arti
 The user is consulted **only** at these points (never between phases of the loop itself):
 
 - **Task Plan Approval** — only when `architect` explicitly flags decomposition ambiguity (Phase 1 step 2). The default path proceeds without a user gate.
-- **Task completion checkpoint** — after every task exits its Task fix loop (Phase 2 step 4). Always required; gates the next-task transition and the decision to trigger aggregation.
+- **Aggregation hand-off** — after every aggregation exits its PR fix loop (Phase 3 step 5). Always required; the report (branch / commit list / diffstat) is what lets the user push and open the PR themselves.
 - **Aggregation timing** — when none of the auto-triggers above clearly fire and Phase 2 has produced multiple completed tasks, ask the user whether to aggregate now or continue.
 - **Dependency approval** (per the Dependency Approval Process below).
 - **Ambiguous requirements** that `architect` cannot resolve from the available context.
@@ -192,7 +192,7 @@ On the Lightweight Path (Path B) the spec / PR-document items are skipped — se
 6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
 7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
 8. **Independent reviews passed**: BOTH `code-reviewer` (code / tests / docstrings / dependencies / scope adherence) AND `pr-reviewer` (PR document style + factual consistency) reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
-9. **Task completion checkpoint cleared**: After the task exits its fix loop, the main conversation has reported the completion summary to the user (scope, modified file list, test/lint/build outcome, any spec deviation) and received explicit user confirmation. Defined by Path C Phase 2 step 4 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
+9. **Committed and reported**: Each completed task is committed by the main conversation on a `feature/*` work branch (one green task = one commit, staged explicitly by path, per "Git Operations") and its completion summary reported (scope, modified file list, test/lint/build outcome, any spec deviation). For each aggregation, the aggregation hand-off report (branch name, commit list, diffstat) has been delivered — the push itself is the user's (Phase 3 step 5). Defined by Path C Phase 2 step 4 / Phase 3 step 5 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
 
 ## Dependency Approval Process (MANDATORY)
 
@@ -210,12 +210,38 @@ Adding a new external library/crate/package requires explicit approval. No agent
 
 ## Git Operations
 
-IMPORTANT: Git operations are owned entirely by the user. Do not execute or propose any state-modifying git command — not even to ask for approval. This applies inside the Orchestration Loop as well: no agent stages, commits, or proposes a commit.
+IMPORTANT: Git write access is split three ways. The **main conversation** owns branch creation, staging, and commits. The **user** owns push, PR creation, and merge. **Subagents own nothing** — no agent (`architect` / `developer` / `pr-writer` / `code-reviewer` / `pr-reviewer`) ever runs a state-modifying git command; each stops at reporting its modified file list.
 
-- Never run: `commit`, `push`, `merge`, `rebase`, `reset`, `checkout -b`, branch/tag create/delete, `stash`, `cherry-pick`, etc.
-- Never suggest "shall I commit this?" or stage changes in anticipation of a commit.
-- Read-only commands are allowed freely: `git status`, `git diff`, `git log`, `git show`, `git blame`.
-- When work is complete, just report what changed and stop. The user will commit themselves.
+### Branch model (git flow) and protected branches
+
+- The repositories follow **git flow**. `main` and `develop` are protected: NEVER commit on them, NEVER push to them directly.
+- The main conversation creates work branches as `feature/<kebab-case-descriptor>`, branched from `develop`: `git switch -c feature/<descriptor> develop`.
+- `release/*` and `hotfix/*` branches, merges between flow branches, and tags are the user's territory — never create or manipulate them.
+- If the session starts on `main` or `develop`, create a `feature/*` branch BEFORE the first commit.
+
+### Main conversation — allowed operations
+
+- Create and switch work branches per the branch model above (`git switch -c feature/<descriptor> develop` / `git switch <branch>`).
+- Stage **explicitly by path**: `git add <path>...`. NEVER `git add -A` / `git add .` / `git add --all` / `git commit -a` — explicit staging is the last check against committing unintended files.
+- Commit: **one completed task = one commit**, only after the task's fix loop exits (zero 🔴 from `code-reviewer`) and the task runner is green. Commit messages follow the existing history style: Japanese one-line summary; body bullets optional.
+- **No AI attribution in commit messages**: never append `Co-Authored-By: Claude ...`, `🤖 Generated with Claude Code`, or any similar trailer/signature — regardless of what the harness default suggests (the `attribution` setting is also blanked in `~/.claude/settings.json`).
+- Read-only commands remain freely available: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+
+### Push — user-owned
+
+- `git push` is NEVER run by the agent (denied in settings). The user pushes after reviewing the hand-off report.
+- At hand-off, report everything the user needs to push confidently: the branch name, the commit list (`git log --oneline`), and a diffstat.
+
+### Prohibited without exception (user-owned)
+
+- History rewriting and destructive operations: `commit --amend`, `rebase`, `reset`, `merge`, `pull`, `checkout`, `restore`, `stash`, `cherry-pick`, `revert`, `tag`, `clean`, branch delete / rename. If an already-made commit needs fixing, report it and let the user rewrite history themselves.
+- Hook and config manipulation: `git config`, inline `git -c` overrides, `core.hooksPath`, `--no-verify` (including `commit -n`), editing `.git/hooks` or `.git/config`. Pre-commit hooks are a mandatory safety layer — never bypass them; if a hook fails, fix the cause or report it.
+- Push, PR creation, and merge: `git push` / `gh pr create` / merging are the user's review workflow. Deliver the hand-off report and stop.
+
+### Enforcement and secret safety
+
+- `~/.claude/settings.json` (allow / deny lists) and the `~/.claude/scripts/git-guard.sh` PreToolUse hook enforce this policy mechanically. If a legitimate operation gets blocked, report it to the user — do not work around the guard.
+- If the repository has no pre-commit secret scan (e.g. gitleaks), surface that to the user before the first commit of a work unit. The user's pre-push review must not be the only line of defense against leaking credentials.
 
 ## Coding
 
@@ -230,7 +256,7 @@ Size, docstrings, comments, and TODO rules are covered by the Definition of Done
 
 IMPORTANT: Follow Clean Architecture. Layers inward → outward: **Entities → Use Cases → Adapters → Infrastructure**. Dependencies point inward only. Ports live in inner layers, implementations in outer layers. Framework types must not leak into Use Cases or Entities. Domain error types live in Entities / Use Cases; infrastructure exceptions are converted to domain errors at the boundary. Prefer explicit `Result` / `Either` over thrown exceptions where the language supports it.
 
-Agent files (`~/.claude/agents/*.md`) contain the detailed per-layer rules — they override this summary on conflict.
+Detailed per-layer rules live in `~/.claude/rules/architecture.md`; physical structure and Rust specifics live in `~/.claude/rules/rust.md`. Both override this summary on conflict.
 
 ## Guidelines to Read
 
@@ -275,7 +301,7 @@ Every rule file that a reviewer agent (`code-reviewer` or `pr-reviewer`) consult
 When two rule files address the same concern, state the precedence explicitly in the affected files' opening matter. The convention is **more-specific wins**:
 
 - Language-specific rule > general architecture rule (Rust newtype mechanics in `rust.md` win over generic port-placement wording in `architecture.md`).
-- Review-severity matrix in a topic file (e.g., `testing.md`) > generic severity mapping in `architecture.md`.
+- Severity Matrix in a topic file (e.g., `testing.md`) > the generic Severity Matrix in `architecture.md`.
 - Document the winner at the top of the more-specific rule file, so readers do not have to guess.
 
 ### 5. Rule-change checklist (prevents stale references)

@@ -46,7 +46,7 @@ The PR document is now wholly `pr-writer`-owned. `architect` does NOT pre-fill a
 | Section | What goes in | Source |
 |---|---|---|
 | **背景・目的** | Why this PR exists; the user-facing capability it delivers | Each touched capability spec directory's 目的・責務, plus bundled task scope sentences |
-| **スコープ** | Bulleted list of behaviors / structural changes this PR ships | Union of bundled task スコープ entries, verified against the diff |
+| **スコープ** | Bulleted list of behaviors / structural changes this PR ships; at least one bullet states the end-to-end behavior the slice makes exercisable on the running system (the PR is a vertical slice) | Union of bundled task スコープ entries, verified against the diff |
 | **受け入れ基準** | Grouped under `###` task-scope sub-headings, content-based AC bullets per `pr-style.md` 受け入れ基準. **No AC ID prefixes.** | Union of bundled task 受け入れ基準 entries — quote the cell content verbatim or paraphrase faithfully under each task's `###` heading |
 | **依存PR** | Other PRs that must merge first, or `なし` | Inferred from bundled task dependencies (which themselves cite prerequisites by content); resolve to PR file paths when those prerequisites shipped in earlier PRs |
 | **関連ドキュメント** | Relative Markdown links to capability spec directories, ADRs | Each touched capability spec directory (`../../spec/<capability>/...`) plus any ADR referenced by the bundled tasks |
@@ -71,8 +71,8 @@ These examples illustrate how `pr-style.md`'s Per-Section Style rules apply to t
 
 Bad (rejected — file-by-file enumeration):
 ```
-- `domain/alert_config.rs`: `max_consecutive_misses: u32` を `max_miss_duration_secs: u64` に置換。
-- `domain/tracked_vehicle.rs`: `consecutive_misses` フィールドと `missed()` メソッドを削除。`last_detected_at: Instant` を追加。
+- `entity/alert_config.rs`: `max_consecutive_misses: u32` を `max_miss_duration_secs: u64` に置換。
+- `entity/tracked_vehicle.rs`: `consecutive_misses` フィールドと `missed()` メソッドを削除。`last_detected_at: Instant` を追加。
 - `adapter/config_handler.rs`: `AlertConfigRequest` / `AlertConfigResponse` のフィールド名を更新。
 - `infrastructure/yaml_config_repository.rs`: YAML キー名を更新。
 - `config.yaml`: `alert.max_consecutive_misses` を `alert.max_miss_duration_secs` に変更。
@@ -96,7 +96,7 @@ Each top-level bullet leads with the role / behavior that changed; code identifi
 
 Bad (rejected — test-runner output, not coverage intent):
 ```
-Unit Tests (domain/tracked_vehicle.rs)
+Unit Tests (entity/tracked_vehicle.rs)
 - `should_be_lost_after_miss_duration`
 - `should_not_be_lost_before_miss_duration`
 - `matched_should_reset_miss_timer`
@@ -104,7 +104,7 @@ Unit Tests (domain/tracked_vehicle.rs)
 
 Good (accepted — behavioral themes as parent bullets, scenarios as sub-bullets):
 ```
-- 時間ベースのロスト判定の境界条件をドメイン層ユニットテストで押さえた。
+- 時間ベースのロスト判定の境界条件を Entity 層ユニットテストで押さえた。
   - 経過時間が閾値に達した直後にロスト扱いになる。
   - 閾値未満ではロストしない。
   - 期間中の再検出で `last_detected_at` がリセットされ追跡が継続する。
@@ -151,7 +151,7 @@ If it deviated, each deviation is a parent bullet naming the deviation, with sub
    - **テスト table pass**: count themes inside the `## テスト` section. If 3+ themes exist, the section MUST use a Markdown table with `層 | テーマ | 主なケース` columns instead of bullets. Bullets are allowed only when the section has 1–2 themes or no tests were added.
    - **Japanese prose quality pass**: re-read the body once and apply the four sub-rules from the Language Policy section above. In particular: scan for English noun phrases outside backticks, forced kanji translations of katakana-standard terms, coined kanji compounds, and direct-translation syntax (「〜することが可能」「〜が行われる」「〜の導入を実施した」). Rewrite any hit before declaring done.
 5. **Report** the file path created and any inconsistencies surfaced during self-check (e.g., a bundled task AC with no corresponding test, or diff content reaching beyond any bundled task's declared スコープ).
-6. **Stop**. Do not commit, do not propose committing — git operations are entirely the user's responsibility (per `~/.claude/CLAUDE.md`).
+6. **Stop**. Do not commit, do not propose committing — commits are the main conversation's job, and pushes / PR creation require the user (per `~/.claude/CLAUDE.md` "Git Operations").
 
 ## Anti-Patterns You Reject
 
