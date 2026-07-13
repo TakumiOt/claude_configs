@@ -16,3 +16,4 @@
 ## 目次
 
 - [`git-policy-revision/`](git-policy-revision/README.md) — git 運用方針の刷新 (メイン会話へのコミット許可とフックによる強制)。
+- [`pbi-design-gate/`](pbi-design-gate/README.md) — 開発ドキュメント体系への PBI 層導入 (1 PBI = 1 PR) と Phase 1 設計ゲートの新設。
