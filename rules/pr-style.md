@@ -73,8 +73,9 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 
 ### 受け入れ基準
 
-- Grouped by task using `###` sub-headings. Each `###` heading is the bundled task's scope sentence (or a short paraphrase that preserves intent). Under each heading, list that task's acceptance criteria as plain bullets. **No AC ID prefixes** (no `AC-N:` / `AC-<tag>-<n>:` etc.).
-- Each bullet is one measurable, verifiable criterion sourced verbatim from the bundled task's 受け入れ基準 cell in the タスク分解 table (`docs/tasks/<work-name>.md`). Do not invent criteria, do not silently absorb implementation drift.
+- The first `###` group is the shipped PBI itself: its heading is the PBI's slice sentence, and its bullets quote the PBI's slice-level 受け入れ基準 (the 動作確認 criteria) from the PBI file (`docs/tasks/<work-name>/<N>-<pbi>.md`).
+- Subsequent groups are per task, using `###` sub-headings. Each `###` heading is the bundled task's scope sentence (or a short paraphrase that preserves intent). Under each heading, list that task's acceptance criteria as plain bullets. **No AC ID prefixes** (no `AC-N:` / `AC-<tag>-<n>:` etc.).
+- Each bullet is one measurable, verifiable criterion sourced verbatim from the PBI file's slice-level 受け入れ基準 or the bundled task's 受け入れ基準 cell in its タスク分解 table. Do not invent criteria, do not silently absorb implementation drift.
 - When the aggregation bundles only 1–2 tasks, `###` sub-headings are still required so the structure stays consistent across PRs.
 
 ### 依存PR
@@ -144,6 +145,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 | Closing prose paragraph after a bullet list | 🟡 |
 | 受け入れ基準 bullets prefixed with `AC-N:` / `AC-<tag>-<n>:` etc. (IDs were globally retired) | 🔴 |
 | 受け入れ基準 lacks `###` task-scope groupings (flat bullet list) | 🔴 |
+| 受け入れ基準 lacks the lead PBI group (slice sentence heading + slice-level AC) | 🟡 |
 | `docs/pr/` or a `docs/pr/<feature>/` directory missing its `README.md` entry point, or the feature README not updated when this PR was added | 🔴 |
 | スコープ describes only internal plumbing with no exercisable end-to-end behavior (the PR is not a verifiable vertical slice) | 🟡 |
 | テスト shows only unit coverage with no end-to-end / integration / manual verification path for the slice | 🟡 |
