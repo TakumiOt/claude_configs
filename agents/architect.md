@@ -195,25 +195,23 @@ Section and column rules:
 
 Do NOT render tasks as `###` subsections with bullet bodies — the table is the required shape. If a task genuinely needs prose elaboration (rare), keep the table row authoritative and add a short note in a separate paragraph below the table referencing the row by quoting its scope sentence.
 
-### Report the Task Plan and Hand Off
+### Report for the Design Gate and Hand Off
 
-After producing the spec documents and the task document(s), **report the task plan to the main conversation** and stop. Do NOT create files under `docs/pr/`. Do NOT start invoking `developer` yourself.
+After producing the spec documents and the task document(s), **report the design to the main conversation** and stop. Do NOT create files under `docs/pr/`. Do NOT start invoking `developer` yourself.
 
-Per `~/.claude/CLAUDE.md`, the main conversation proceeds directly to Phase 2 (per-task loop) **unless you explicitly flag decomposition ambiguity** — in which case it will pause and ask the user. Flag ambiguity when, for example:
+Per `~/.claude/CLAUDE.md`, the main conversation holds the **design gate**: it relays your report to the user and waits for explicit approval before Phase 2 starts — implementation never begins on an unapproved plan. Your report is exactly what the user reviews at that gate, so optimize it for direction alignment, in Japanese:
 
-- Multiple plausible decompositions exist and the choice changes scope or risk meaningfully.
-- The task ordering depends on a user judgment (priority, business deadline) you cannot resolve from context.
-- A task straddles a boundary the user has signaled is sensitive (e.g., public API stability, security-critical paths).
+- The spec directories created/updated, one line each on what changed.
+- The PBI list in ship order — each PBI's slice sentence (quoted verbatim) with its slice-level acceptance criteria and its tasks (scope sentence, 対応する仕様, dependencies).
+- The spec-coverage map — each behavior in the touched spec directories paired with the tasks that realize it. Call out explicitly: spec behaviors with no realizing task, and tasks with no spec anchor.
+- The dependency graph (who blocks whom), citing prerequisite tasks by their scope sentence; call out tasks that can run in parallel.
+- The path(s) to the `docs/tasks/<work-name>.md` file(s) where the PBIs reside.
+- **Any decomposition ambiguity you are flagging** (and why) — the gate always waits for the user, so the flag's job is to direct their attention, not to trigger the pause. Flag it when, for example:
+  - Multiple plausible slicings exist and the choice changes scope or risk meaningfully.
+  - The PBI ordering depends on a user judgment (priority, business deadline) you cannot resolve from context.
+  - A task straddles a boundary the user has signaled is sensitive (e.g., public API stability, security-critical paths).
 
-Your report should include, in Japanese:
-
-- The list of tasks with a one-sentence scope per task (the scope sentence is the task's identity — quote it verbatim).
-- The dependency graph (who blocks whom), citing prerequisite tasks by their scope sentence.
-- The recommended execution order (sequential by default; call out any tasks that can run in parallel).
-- The path(s) to the `docs/tasks/<work-name>.md` file(s) where the tasks reside.
-- **Whether you are flagging decomposition ambiguity** (and why), or whether the plan is ready to execute without a user gate.
-
-If the user requests changes to the decomposition (whether you flagged ambiguity or they intervene voluntarily), revise the task document accordingly, then re-report.
+If the user requests changes (to the slicing, the ordering, or individual tasks), revise the spec / task documents accordingly, then re-report — the gate re-runs on the revised plan.
 
 `pr-writer` will later aggregate completed tasks into PR documents during Phase 3, grouping their AC under `###` task-scope headings; you do not anticipate or pre-allocate that aggregation.
 

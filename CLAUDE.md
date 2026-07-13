@@ -121,7 +121,7 @@ PR files use the PR sequence number as a prefix (`1-`, `2-`, ...). `<aggregation
 
 ### Orchestration Loop (Path C, MANDATORY)
 
-For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. Except for the **Task Plan Report** checkpoint (which only blocks when `architect` flags ambiguity) and the **aggregation hand-off** (Phase 3 step 5, where the user takes over for push and PR creation), do not pause to ask the user between phases.
+For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. The loop has exactly two user gates — the **design gate** (Phase 1 step 2, always blocking: implementation direction is aligned before any code) and the **aggregation hand-off** (Phase 3 step 5, where the user takes over for push and PR creation) — and between them it does not pause to ask the user.
 
 #### Phase 1 — Design
 
@@ -132,7 +132,12 @@ For every non-trivial change that does NOT qualify for Path A or Path B, the mai
    - Task Decomposition: writes standalone Task Decomposition documents at `docs/tasks/<work-name>.md`, the filename describing the work (format defined in `~/.claude/agents/architect.md`).
    - Cross-directory references point to the other directory via relative Markdown links instead of duplicating content.
    - Does NOT create any file under `docs/pr/`. Does NOT decide PR aggregation. Does NOT write implementation code.
-2. **Task Plan Report** → the main conversation reports the task list to the user (each task quoted by its scope sentence, plus dependencies and recommended order — no IDs). Proceed directly to Phase 2 UNLESS `architect` explicitly flags ambiguity (multiple plausible decompositions, unclear ordering, sensitive boundary) — in which case wait for explicit user feedback. The user may always intervene to revise the plan, but the default path no longer pauses.
+2. **Design gate (MANDATORY)** → the main conversation reports the design to the user and waits for explicit approval before Phase 2 starts. This is the direction-alignment gate that pairs with the retirement of per-task confirmation waits: the spec captures WHAT the system promises, the PBI-grouped Task Decomposition captures HOW it gets implemented and shipped, and the user approves that pairing before any implementation. The report covers:
+   - The spec directories created/updated (paths, one line each on what changed).
+   - The PBI list in ship order — each PBI quoted by its slice sentence, with its slice-level acceptance criteria and its tasks (scope sentence + 対応する仕様 + dependencies). No IDs.
+   - The spec-coverage map — each behavior in the touched spec directories paired with the tasks that realize it; spec behaviors with no task, and tasks with no spec anchor, are surfaced explicitly.
+   - Any decomposition ambiguity `architect` flagged (multiple plausible slicings, unclear ordering, sensitive boundary) — flagged items direct the user's review, but the gate waits regardless.
+   If the user requests changes, re-invoke `architect` to revise, then re-run the gate. Do NOT start Phase 2 until the user approves.
 
 #### Phase 2 — Per-Task Implementation Loop
 
@@ -173,7 +178,7 @@ When invoking the next agent, always pass the previous agent's output (spec arti
 
 The user is consulted **only** at these points (never between phases of the loop itself):
 
-- **Task Plan Approval** — only when `architect` explicitly flags decomposition ambiguity (Phase 1 step 2). The default path proceeds without a user gate.
+- **Design gate** — after every Phase 1, before any implementation (Phase 1 step 2). Always required; the user approves the spec + PBI-grouped Task Decomposition as the direction-alignment point.
 - **Aggregation hand-off** — after every aggregation exits its PR fix loop (Phase 3 step 5). Always required; the report (branch / commit list / diffstat) is what lets the user push and open the PR themselves.
 - **PBI re-slice** — when implementation reveals the PBI slicing was wrong and `architect` proposes a revised backlog, the revision passes the design gate again before implementation resumes.
 - **Dependency approval** (per the Dependency Approval Process below).
@@ -187,7 +192,7 @@ A development task is NOT complete until every item below is true. The `develope
 On the Lightweight Path (Path B) the spec / PR-document items are skipped — see "Lightweight Path (Path B)" above for the reduced checklist.
 
 1. **Spec artifacts exist and are reconciled**: For every capability the change touches, `docs/spec/<capability>/` is written/updated as living-spec documents following the `~/.claude/rules/spec-style.md` per-spec-kind templates (each directory carrying a Japanese `README.md` entry point), and a standalone `docs/tasks/<work-name>.md` holds the Task Decomposition. The system-wide `docs/spec/overview/` is updated when system-level structure changes. Every touched `docs/` directory carries its `README.md` entry point per "README everywhere" above (`docs/tasks/README.md` and `docs/adr/README.md` present and current). At the merge gate the spec is reconciled so it matches the shipped implementation. ADRs created when applicable (rationale lives there, not in the spec).
-1a. **Task plan reported**: The task list (scope summaries, dependencies, order — no IDs) has been reported to the user. User approval is required only when `architect` flagged decomposition ambiguity.
+1a. **Design gate cleared**: The spec + PBI-grouped Task Decomposition (PBI slice sentences with slice-level AC, task scope sentences with 対応する仕様, spec-coverage map, dependencies, ship order — no IDs) has been reported to the user AND explicitly approved BEFORE Phase 2 started (Path C Phase 1 step 2).
 1b. **PR documents exist per aggregation**: For each aggregation triggered in Phase 3, `docs/pr/<feature>/<N>-<aggregation>.md` exists and is fully populated by `pr-writer` (all sections — there is no `architect`-pre-filled portion), and the `docs/pr/README.md` and `docs/pr/<feature>/README.md` entry points are present and current. Style compliance against `~/.claude/rules/pr-style.md` and factual consistency against the bundled task list, the cumulative diff, and the spec document are confirmed by `pr-reviewer`.
 1c. **PR is a verifiable vertical slice**: Each aggregation ships exactly one PBI and forms a vertical slice that can be exercised on the running system end-to-end (a UI flow, a CLI command, or a use case/endpoint reachable through the composition root) — not a horizontal layer with no caller. The PR document's テスト section shows how the slice is verified (integration / E2E / manual when no automated path exists), and the PBI's slice-level 受け入れ基準 are demonstrable on the running system, not only in unit tests.
 2. **Test-first**: Every new behavior was introduced via a failing test before production code (see `~/.claude/rules/testing.md`).
