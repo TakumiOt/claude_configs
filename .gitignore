@@ -8,6 +8,7 @@
 !/skills/
 !/commands/
 !/scripts/
+!/docs/
 
 # Inside skills/, exclude packaged zips and runtime artifacts.
 skills/*.zip
