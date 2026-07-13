@@ -33,18 +33,20 @@ Test doubles MUST be classified into one of the three categories below. Do **not
 
 ## Layered Test Strategy
 
-Self-managed modules (domain / use case / middleware / infrastructure we own) MUST be exercised with real implementations by default. When a double is unavoidable, prefer `Fake` over `Mock` and never use `Stub`.
+Self-managed modules (entity / use case / middleware / infrastructure we own) MUST be exercised with real implementations by default. When a double is unavoidable, prefer `Fake` over `Mock` and never use `Stub`.
 
 | Layer | Style | Allowed doubles |
 |---|---|---|
-| Entity / Domain (pure value objects) | Detroit | None — use the real type |
+| Entity (pure value objects) | Detroit | None — use the real type |
 | Use Case | Detroit | **Boundary Mock** for external I/O ports; real instances for everything else we own (signers, verifiers, crypto, repositories). Use-case-level branch-coverage tests run against a real database via the workspace's `tests/usecase/` test-runner crate. In-memory `Fake*Repository` doubles for self-managed persistence are not used. |
 | Middleware | Detroit | Router-level observable behavior runs against a real database via the `tests/integration/` test-runner crate. Pure middleware logic with no port collaborators may stay co-located in `#[cfg(test)] mod tests`. In-memory `Fake*Repository` doubles are not used. |
 | Infrastructure — pure logic (crypto, hashing, HMAC, JWT, etc.) | Detroit | None — use the real implementation; tests live co-located in `#[cfg(test)] mod tests` inside the owning crate. |
-| Infrastructure — adapter wrapping a persistence port (e.g., `Argon2*Verifier`, snapshot caches that reload from a `Pg*Repository`) | Detroit | Branch-coverage tests run against a real database via the `tests/infrastructure/` test-runner crate. In-memory `Fake*Repository` doubles are not used. |
-| Infrastructure — DB / external API bindings (raw `Pg*Repository` etc.) | Covered by integration tests | Do not write unit tests at this layer |
+| Infrastructure — adapter wrapping a persistence port (e.g., a hash verifier delegating to a repository port, a snapshot cache that reloads from a DB-backed repository) | Detroit | Branch-coverage tests run against a real database via the `tests/infrastructure/` test-runner crate. In-memory `Fake*Repository` doubles are not used. |
+| Infrastructure — DB / external API bindings (raw DB-backed repository implementations, external API clients) | Covered by integration tests | Do not write unit tests at this layer |
 | Adapter / Handler | Covered by integration tests | — |
 | Integration tests | Detroit | Only **Boundary Mocks** for external I/O |
+
+The `tests/<name>/` runner crates referenced above (`tests/integration/`, `tests/usecase/`, `tests/infrastructure/`) are the standard runner set defined in `~/.claude/rules/rust.md` "Directory and Crate Structure"; create a runner when its tier first gets tests. For non-Rust projects, map each tier to the equivalent test location.
 
 ## Unit Tests vs. Integration Tests
 
@@ -53,7 +55,7 @@ Self-managed modules (domain / use case / middleware / infrastructure we own) MU
 - **Unit tests** — Fast and exhaustive. Responsible for **branch coverage, boundary conditions, and error paths** on **pure-logic** self-managed modules (entities, value objects, crypto primitives, etc.). Live co-located in `#[cfg(test)] mod tests { ... }` blocks inside the owning crate.
 - **Integration tests** — Use real cross-layer collaborators (real DB, real crypto, real HTTP routing where applicable). Three complementary shapes coexist:
   - **Use-case-level integration tests** (`tests/usecase/`) — Exhaustive branch-coverage tests for use cases, driving the production repository / gateway impls against a real database. They replace what would historically have been use-case unit tests with `Fake*Repository` doubles.
-  - **Infrastructure-adapter integration tests** (`tests/infrastructure/`) — Exhaustive branch-coverage tests for infrastructure adapters that wrap a persistence port (e.g., `Argon2*Verifier`, snapshot caches that reload from a `Pg*Repository`). They replace what would historically have been adapter unit tests with `Fake*Repository` doubles.
+  - **Infrastructure-adapter integration tests** (`tests/infrastructure/`) — Exhaustive branch-coverage tests for infrastructure adapters that wrap a persistence port (e.g., a hash verifier delegating to a repository port, a snapshot cache that reloads from a DB-backed repository). They replace what would historically have been adapter unit tests with `Fake*Repository` doubles.
   - **HTTP / E2E integration tests** (`tests/integration/`) — Cover **cross-layer wiring**: real SQL execution, middleware traversal, crypto wiring, HTTP response mapping. Includes Router-level middleware behavior (CORS, auth) that needs real persistence at the boundary.
 
 ### Where Does an Observation Belong?
@@ -79,10 +81,15 @@ Using the real implementation is the default, even for self-managed modules. Whe
 
 When adding a new test, consciously decide **which layer the test belongs to** and **which collaborators (if any) need to be replaced with a double**, based on the table above. Do not mechanically copy an existing test pattern.
 
-## Review Severity (for `code-reviewer`)
+## Severity Matrix
 
-- Heavy internal mocking of self-managed modules → 🟡 (design smell). If it replaces a collaborator we own with a `Stub`, → 🔴.
-- Test name that reproduces the method name instead of the behavior → 🟡.
-- Structure-mirroring test duplicated by an integration test covering the same outcome → 🟡 (delete the unit test).
-- Test-only bypass or weakened parameter in production code introduced "to make tests fast" → 🔴.
-- Integration-only `Boundary Mock` used in place of a real self-managed collaborator → 🔴.
+`code-reviewer` applies these severities verbatim — do not re-derive them.
+
+| Observation | Severity |
+|---|---|
+| Heavy internal mocking of self-managed modules (design smell) | 🟡 |
+| A collaborator we own replaced with a `Stub` | 🔴 |
+| Test name that reproduces the method name instead of the behavior | 🟡 |
+| Structure-mirroring test duplicated by an integration test covering the same outcome (delete the unit test) | 🟡 |
+| Test-only bypass or weakened parameter in production code introduced "to make tests fast" | 🔴 |
+| `Boundary Mock` used in place of a real self-managed collaborator | 🔴 |

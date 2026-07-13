@@ -68,6 +68,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 ### スコープ
 
 - Bullets describing observable behaviors / structural changes the PR ships.
+- **The PR is a vertical slice**: at least one bullet states the end-to-end behavior the slice makes exercisable on the running system (a UI flow, a CLI command, or a use case/endpoint reachable through the composition root). A PR whose スコープ is purely internal plumbing with no exercisable end is a decomposition problem — surface it to the orchestrator rather than documenting it as shippable.
 - Composed from the union of the bundled tasks' スコープ entries — do not invent items, do not silently absorb implementation drift.
 
 ### 受け入れ基準
@@ -99,8 +100,9 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 
 ### テスト
 
+- **The slice's verification path is visible**: because a PR is a verifiable vertical slice, this section MUST show how the end-to-end behavior is exercised — an integration / E2E row, or a manual-verification bullet when no automated path exists yet — not only unit-level coverage of the individual layers.
 - **Default format: a Markdown table** with columns **層 (or 種別) | テーマ | 主なケース**.
-  - 層 / 種別: domain unit / infrastructure / integration / contract / E2E / manual など、テスト基盤ごとの粒度。
+  - 層 / 種別: entity unit / infrastructure / integration / contract / E2E / manual など、テスト基盤ごとの粒度。
   - テーマ: 行の振る舞い主題 (例: 「認証ユースケース」, 「永続化ラウンドトリップ」)。
   - 主なケース: シナリオ・境界条件をセル内で `/` 区切りで列挙。
 - Additional columns (場所) only when the value varies meaningfully across rows.
@@ -143,5 +145,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 | 受け入れ基準 bullets prefixed with `AC-N:` / `AC-<tag>-<n>:` etc. (IDs were globally retired) | 🔴 |
 | 受け入れ基準 lacks `###` task-scope groupings (flat bullet list) | 🔴 |
 | `docs/pr/` or a `docs/pr/<feature>/` directory missing its `README.md` entry point, or the feature README not updated when this PR was added | 🔴 |
+| スコープ describes only internal plumbing with no exercisable end-to-end behavior (the PR is not a verifiable vertical slice) | 🟡 |
+| テスト shows only unit coverage with no end-to-end / integration / manual verification path for the slice | 🟡 |
 | Lead-in sentence longer than one sentence | 💭 |
 | Minor wording inconsistencies between parallel bullets | 💭 |

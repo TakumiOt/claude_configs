@@ -44,7 +44,7 @@ Every public API docstring MUST follow this structure. Items 1 and 2 are mandato
    - Meaning and preconditions of each parameter (invariants, valid ranges).
    - Meaning of the return value.
    - Error variants that may be returned and the conditions that trigger them.
-4. **Side effects** — I/O, state mutation, external calls, concurrency expectations. If none, state "Pure" explicitly.
+4. **Side effects** — Declare them **when present**: I/O, state mutation, external calls, blocking, concurrency / async-cancellation behavior. Purity is the **default assumption**, so a pure function needs no marker; state "Pure" only when it genuinely aids the reader (e.g. a function that looks like it performs I/O but does not). Document the exception, not the rule.
 5. **Example (optional)** — Only for traits or public functions whose intended usage is non-obvious.
 
 ## Where Each "Why" Lives
@@ -113,7 +113,7 @@ This rule applies to inline `// why` comments as well: write the *why*, not a po
 | Port-trait docstring leaking infrastructure details into the inner layer | 🔴 blocker |
 | Missing **Contract** (parameter preconditions / return meaning / error variants) when applicable | 🟡 suggestion |
 | Docstring asserting it preserves "the contract" without naming the specific guarantee (error variants / invariant / ordering / etc.), outside conceptual module-overview prose | 🟡 suggestion |
-| Missing **Side effects** declaration (or explicit "Pure") | 🟡 suggestion |
+| A function **with side effects** (I/O, state mutation, external call, blocking) that does not declare them | 🟡 suggestion |
 | Missing **Example** on a non-obvious trait or public function | 🟡 suggestion |
 | Port-trait method docstring that documents infrastructure errors instead of domain meaning | 🟡 suggestion |
 | Docstring (or `// why` comment) that cites an ADR number, spec-doc path, phase name, ticket ID, or commit hash as load-bearing context instead of inlining the reasoning | 🔴 blocker ("external-reference rot") |

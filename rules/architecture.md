@@ -12,7 +12,7 @@ Authoritative rules for applying Clean Architecture to Rust Web API projects. Au
 
 When this document and `~/.claude/rules/rust.md` overlap:
 
-- **Rust-specific implementation detail** (Newtype mechanics, panic policy, serde rules, error-type crates, async runtime) → `rust.md` wins.
+- **Rust-specific implementation detail** (workspace / crate structure, DI mechanics, Axum boundary rules, Newtype mechanics, panic policy, serde rules, error-type crates, async runtime) → `rust.md` wins.
 - **Layer responsibility, port placement, layer-boundary review observations** → this document wins.
 
 ---
@@ -92,7 +92,7 @@ One axis of judgement: **is the target a self-domain concept, or an external sys
 
 ## What Belongs in Each Layer
 
-### Entity layer (Domain)
+### Entity layer
 
 - Entities / aggregates (the logic that enforces invariants)
 - Value objects
@@ -137,86 +137,7 @@ One axis of judgement: **is the target a self-domain concept, or an external sys
 
 ## Directory and Crate Structure
 
-Rust projects MUST use a Cargo workspace, split **by bounded context (domain)** rather than by Clean Architecture layer. Splitting by domain keeps related business rules cohesive within one crate so a reader can follow a domain end-to-end without crate hopping; technical concerns (DB, external IO) are concentrated in a separate `infrastructure` crate. Layered splits at workspace level (`domain` / `usecase` / `adapter` crates) are NOT used in this project.
-
-### Workspace layout (project default)
-
-```text
-Cargo.toml                         # workspace root: declares [workspace] members (no [package])
-crates/                            # production code + test-support libraries
-├── shared-kernel/
-│   ├── Cargo.toml                 # [package] no workspace dependencies
-│   └── src/lib.rs                 # cross-cutting value objects and ports (Clock, Money, Email, etc.)
-├── <domain-a>/                    # bounded context A (e.g. user, order, payment)
-│   ├── Cargo.toml                 # [package] dependencies = shared-kernel only
-│   └── src/
-│       ├── lib.rs
-│       ├── domain/                # entities, value objects, repository ports, domain errors
-│       ├── usecase/               # use cases, input/output DTOs, gateway / query-service ports
-│       └── adapter/               # controllers, presenters, request/response DTOs
-├── <domain-b>/
-│   ├── Cargo.toml
-│   └── src/{lib.rs, domain/, usecase/, adapter/}
-├── infrastructure/                # technical concerns concentrated here
-│   ├── Cargo.toml                 # dependencies = every domain crate + shared-kernel
-│   └── src/
-│       ├── lib.rs
-│       ├── persistence/           # DB connection pool, migrations, shared query helpers
-│       ├── repository/            # implementations of every domain crate's repository port
-│       ├── http_client/           # external API clients (gateway implementations)
-│       └── messaging/             # message queue, event bus
-├── app/                           # composition root (binary)
-│   ├── Cargo.toml                 # depends on every crate above
-│   └── src/{lib.rs, bin/<name>.rs}
-├── test-db/                       # test-support library (library-only)
-│   ├── Cargo.toml                 # depends on infrastructure + domain crates as needed
-│   └── src/lib.rs                 # DB lifecycle harness + fixture helpers
-└── test-contract/                 # test-support library (library-only)
-    ├── Cargo.toml                 # depends on domain crates + test-db
-    └── src/lib.rs                 # shared port-contract assertion functions
-tests/                             # test-runner crates (binary tests)
-└── integration/                   # cross-crate integration / E2E tests
-    ├── Cargo.toml                 # depends on every domain crate + infrastructure + app + test-db
-    ├── src/lib.rs                 # shared test helpers (TestAppBuilder, fixtures)
-    └── tests/                     # integration / E2E test bodies (see rust.md "Test Layout")
-```
-
-**Test-support library naming**: Test-support **library** crates that live under `crates/` (e.g. a contract-test helper library or a shared DB-fixture library) MUST use the **`test-*` prefix** consistently — `test-contract`, `test-db`, etc. The shared prefix groups them together in alphabetical `crates/` listings and signals their non-production role at a glance. A single test-support library may use any name, but as soon as a second one is added the prefix becomes mandatory and existing crates MUST be renamed for consistency. Test-**runner** crates under `tests/<name>/` (the crates that hold actual `#[test]` binaries) do NOT require the prefix — the `tests/` directory itself already signals their role and groups them together.
-
-### Dependency direction (workspace level)
-
-The compiler enforces this graph through each crate's `Cargo.toml` `[dependencies]`. `code-reviewer` performs a second-stage review of the dependency declarations as a backstop.
-
-- `shared-kernel` — depends on nothing.
-- `<domain-*>` — depends only on `shared-kernel`. **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
-- `infrastructure` — depends on every domain crate and `shared-kernel`. It implements each domain's Repository / Gateway ports so all DB and external-IO concerns live here.
-- `app` — depends on every crate. Wires the composition root, builds the Axum `Router`, owns binary entry points.
-- `test-db` / `test-contract` (under `crates/`) — test-support libraries. `test-db` depends on `infrastructure` and the domain crates it seeds; `test-contract` depends on the domain crates whose port contracts it asserts plus `test-db`. Neither hosts test binaries.
-- `tests/integration/` (under `tests/`) — test-runner crate. Depends on every domain crate, `infrastructure`, `app`, `test-db`, and (where contract tests are wired) `test-contract`. It exists only as a test harness.
-
-### Adapter placement
-
-Adapters (HTTP controllers, request/response DTOs, presenters) live **inside each domain crate's `adapter/` module**, NOT in a separate workspace-level adapter crate. The `app` crate imports each domain's adapter module and composes the global router. This keeps domain cohesion high while still surfacing the routing graph from one place.
-
-### Cross-domain use cases
-
-A use case that touches multiple bounded contexts (e.g. "place order" reaching into inventory and payment) is implemented in the **most central domain's `usecase/` module**, with the other domains exposed as Gateway ports injected at composition. Do NOT introduce a workspace-level `application` crate for cross-domain orchestration — it usually signals the central domain has not been identified, or that domain boundaries themselves need revisiting (escalate to `architect`).
-
-### Single-domain projects
-
-If the project genuinely has one bounded context, the workspace structure still applies: one `<domain>` crate plus `shared-kernel`, `infrastructure`, `app` under `crates/`, and at least one test-runner crate under `tests/<name>/` (typically `tests/integration/`). Resist collapsing into a single crate to save files — the dependency-direction protections only exist at the crate boundary, and adding a second domain later is much cheaper if the workspace is already in place.
-
-### Structure review checklist
-
-- [ ] The workspace splits crates **by bounded context**, not by Clean Architecture layer (no `domain` / `usecase` / `adapter` crates at workspace level).
-- [ ] Each crate directory contains its own `Cargo.toml` declaring `[package]` and `[dependencies]`.
-- [ ] Domain crate `Cargo.toml` files declare no dependency on other domain crates (verify in `[dependencies]`).
-- [ ] `shared-kernel`'s `Cargo.toml` declares no dependency on any other workspace crate.
-- [ ] Persistence and external-IO implementations live in the `infrastructure` crate; no domain crate contains DB pool / HTTP-client wiring.
-- [ ] Each domain crate's source layout uses `domain/` / `usecase/` / `adapter/` modules; the inward-only direction is preserved within the crate via module visibility (`pub(crate)` and narrower).
-- [ ] Cross-domain use cases live in the central domain's `usecase/` module and reach other domains only through Gateway ports.
-- [ ] Integration / E2E tests live in a test-runner crate under `tests/<name>/` (currently `tests/integration/`), not in any domain crate's `tests/` or in a `crates/test-*/tests/` directory (see `rust.md` "Test Layout").
-- [ ] When the workspace has more than one test-support **library** crate under `crates/`, every such crate uses the `test-*` prefix. Test-runner crates under `tests/<name>/` are grouped by the `tests/` directory itself and do not require the prefix.
+Physical structure is language-specific and lives in the language rule. For Rust — the canonical workspace layout, the crate dependency graph, the standard test-runner crates, adapter placement, cross-domain use cases, and the structure review checklist — see `~/.claude/rules/rust.md` "Directory and Crate Structure". The layer rules in this document apply within whatever physical structure the language rule prescribes.
 
 ---
 
@@ -288,29 +209,6 @@ If the project genuinely has one bounded context, the workspace structure still 
 
 ---
 
-## Dependency Injection Patterns (Rust)
-
-Both are acceptable; consistency within a project matters more than the choice.
-
-- **Static dispatch** — generic parameters with trait bounds: `CreateUser<R: UserRepository, G: MailGateway>`. Zero runtime overhead, more verbose at the definition site.
-- **Dynamic dispatch** — trait objects: `Arc<dyn UserRepository + Send + Sync>`. Simpler types, ergonomic with Axum `State`. Negligible vtable overhead. **Generally preferred for Web APIs.**
-
-Checks:
-
-- [ ] The DI style is consistent within the project.
-- [ ] Type parameters have not exploded into unreadable generics.
-- [ ] `Arc<dyn Trait>` usage declares `Send + Sync` appropriately.
-
----
-
-## Ownership and Lifetimes at Layer Boundaries
-
-- [ ] Methods returning Entities do not clone defensively; ownership transfer is deliberate.
-- [ ] Repository parameter kind (`&T` vs. `T`) reflects intent — borrow for read, own for transfer / store.
-- [ ] Lifetime annotations do not leak across layer boundaries and do not complicate inner-layer signatures.
-
----
-
 ## Layered Error Types
 
 Boundary conversion and crate selection (`thiserror` / `anyhow`) live in `rust.md`. This document specifies the *layering*:
@@ -323,30 +221,6 @@ Checks:
 
 - [ ] Each layer owns its own error type; there is no single project-wide error enum spanning layers.
 - [ ] Adapter-layer response conversion exists wherever the project exposes a protocol.
-
----
-
-## Axum Boundary Rules
-
-### Extractors stay in Controllers
-
-Extractors (`Json<T>`, `Path<T>`, `State<T>`) must appear only in Controller signatures. A Use Case method that accepts `Json<T>` is a framework leak and is 🔴.
-
-### Request / Response types belong in the Adapter layer
-
-- [ ] Types carrying `#[derive(Serialize, Deserialize)]` live in the Adapter layer.
-- [ ] Use Case Input / Output DTOs have no serde annotations.
-- [ ] Request → Input DTO and Output DTO → Response conversions are performed inside the Controller.
-
-### State and DI
-
-- [ ] `State<T>` carries an `AppState` that holds all Use Cases / Gateways.
-- [ ] `AppState` construction (the DI root) lives in `main.rs` or a dedicated composition module.
-
-### Middleware
-
-- [ ] Auth, logging, and similar middleware belong to the Adapter / Infrastructure layer.
-- [ ] Middleware-produced values (e.g. authenticated user identity) are converted to Use Case-layer types before crossing into Use Cases — never Axum types.
 
 ---
 
@@ -378,30 +252,6 @@ PR scope:
 
 ---
 
-## Severity Mapping (for `code-reviewer`)
-
-Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer` uses this table directly and does not re-derive severity.
-
-| Tier | Severity | Examples |
-|------|----------|----------|
-| **Critical** — must fix | 🔴 blocker | Dependency direction violation (inner importing outer); framework / ORM leakage into an Entity; Repository returning DB row type; Use Case accepting an Axum extractor; Repository interface placed outside the Entity layer; Gateway interface placed outside the Use Case layer. |
-| **Major** — normally fix | 🔴 or 🟡 (see below) | Business logic in a Use Case `if`; domain concept carried as raw `String` / `i64`; serde annotation on an Input / Output DTO; missing layered error types; `pub` Entity fields without justification. |
-| **Minor** — improvement recommended | 💭 or 🟡 | Weak Newtype validation; inconsistent `async_trait` vs. native async fn; `unwrap()` / `expect()` in inner layers; oversized conversion code in a Repository impl that should be a Mapper; missing resilience patterns (retry, timeout, circuit breaker) in a Gateway impl. |
-
-**Major → 🔴 vs. 🟡:**
-
-- Directly affects security / data integrity / API contract (e.g. an authorization check placed outside the Use Case, serde on a DTO causing an external schema diff) → 🔴.
-- Refactorable without externally visible change (e.g. narrowing a `pub` field to `pub(crate)`) → 🟡.
-
-**Severity precedence when other guideline files apply:**
-
-- Test observations — `~/.claude/rules/testing.md` wins.
-- Docstring observations — `~/.claude/rules/docstrings.md` wins.
-- Rust-specific observations with an explicit severity in `rust.md` — `rust.md` wins.
-- This document's severity applies only to layer-responsibility / dependency-direction / port-placement observations not covered above.
-
----
-
 ## Agent Usage
 
 ### architect
@@ -418,7 +268,7 @@ Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer
 ### code-reviewer
 
 - "Per-Layer Review Observations" is a mandatory checklist for every review.
-- Assign severity per the "Severity Mapping" table.
+- Assign severity per the "Severity Matrix" table.
 - On conflict with `testing.md` / `docstrings.md` / `rust.md`, the more specific document wins.
 
 ### pr-writer
@@ -457,3 +307,27 @@ Clean Architecture has many interpretations. Sources differ on:
 **This project adopts the interpretation codified in this document.** When in doubt, return to this guide.
 
 *The guide is written with Rust × Axum in mind, but the principles apply to Actix-web, Rocket, and other Rust web frameworks.*
+
+---
+
+## Severity Matrix
+
+Architecture-level findings map to 🔴 / 🟡 / 💭 as follows. `code-reviewer` uses this table directly and does not re-derive severity.
+
+| Tier | Severity | Examples |
+|------|----------|----------|
+| **Critical** — must fix | 🔴 blocker | Dependency direction violation (inner importing outer); framework / ORM leakage into an Entity; Repository returning DB row type; Use Case accepting an Axum extractor; Repository interface placed outside the Entity layer; Gateway interface placed outside the Use Case layer. |
+| **Major** — normally fix | 🔴 or 🟡 (see below) | Business logic in a Use Case `if`; domain concept carried as raw `String` / `i64`; serde annotation on an Input / Output DTO; missing layered error types; `pub` Entity fields without justification. |
+| **Minor** — improvement recommended | 💭 or 🟡 | Weak Newtype validation; inconsistent `async_trait` vs. native async fn; `unwrap()` / `expect()` in inner layers; oversized conversion code in a Repository impl that should be a Mapper; missing resilience patterns (retry, timeout, circuit breaker) in a Gateway impl. |
+
+**Major → 🔴 vs. 🟡:**
+
+- Directly affects security / data integrity / API contract (e.g. an authorization check placed outside the Use Case, serde on a DTO causing an external schema diff) → 🔴.
+- Refactorable without externally visible change (e.g. narrowing a `pub` field to `pub(crate)`) → 🟡.
+
+**Severity precedence when other guideline files apply:**
+
+- Test observations — `~/.claude/rules/testing.md` wins.
+- Docstring observations — `~/.claude/rules/docstrings.md` wins.
+- Rust-specific observations with an explicit severity in `rust.md` — `rust.md` wins.
+- This document's severity applies only to layer-responsibility / dependency-direction / port-placement observations not covered above.
