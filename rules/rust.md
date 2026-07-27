@@ -228,6 +228,7 @@ Rustdoc uses standard `#`-headed sections. When a docstring is warranted (per th
 ## Async
 
 - Pick one runtime per crate (typically `tokio`) and stick to it. Do not mix `async-std` and `tokio` in the same dependency tree.
+- Keep domain logic synchronous where possible — async belongs at the adapter / infrastructure boundary.
 - Traits with async methods: prefer `async fn` in traits (stable since Rust 1.75) over `async-trait` unless object-safety is required.
 - Do not block the async runtime with `std::thread::sleep`, synchronous file I/O, or CPU-heavy work — use `tokio::time::sleep`, `tokio::fs`, or `spawn_blocking` respectively.
 
@@ -268,6 +269,7 @@ Checks:
 
 ## Ownership and Lifetimes at Layer Boundaries
 
+- [ ] No reflexive `.clone()` to silence the borrow checker; when a clone is necessary, a plain body comment states the ownership reason.
 - [ ] Methods returning Entities do not clone defensively; ownership transfer is deliberate.
 - [ ] Repository parameter kind (`&T` vs. `T`) reflects intent — borrow for read, own for transfer / store.
 - [ ] Lifetime annotations do not leak across layer boundaries and do not complicate inner-layer signatures.
