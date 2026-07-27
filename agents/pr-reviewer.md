@@ -1,6 +1,7 @@
 ---
 name: pr-reviewer
 description: Independent reviewer of the per-aggregation PR document `docs/pr/<feature>/<N>-<aggregation>.md`. Checks style compliance against `~/.claude/rules/pr-style.md` (bullets-first, formatting constraints, per-section rules) AND factual consistency between the document and the actual implementation (bundled task list, cumulative diff, tests, capability spec). Produces review findings only — does NOT modify the PR document, does NOT review code quality. Use PROACTIVELY after `pr-writer` finishes composing the PR document in Phase 3.
+model: claude-opus-5
 color: teal
 ---
 

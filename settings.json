@@ -1,10 +1,10 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "attribution": {
     "commit": "",
     "pr": ""
-  },
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -20,6 +20,7 @@
       "Bash(xargs:*)",
       "Bash(jq:*)",
       "Bash(cat:*)",
+      "Bash(echo:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
       "Bash(nl:*)",
@@ -39,19 +40,10 @@
       "Bash(git log:*)",
       "Bash(git show:*)",
       "Bash(git blame:*)",
-      "Bash(git -C * status:*)",
-      "Bash(git -C * diff:*)",
-      "Bash(git -C * log:*)",
-      "Bash(git -C * show:*)",
-      "Bash(git -C * blame:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git switch:*)",
       "Bash(git branch:*)",
-      "Bash(git -C * add:*)",
-      "Bash(git -C * commit:*)",
-      "Bash(git -C * switch:*)",
-      "Bash(git -C * branch:*)",
       "Read(./.env.example)",
       "Read(~/.claude/rules/)",
       "Bash(docker compose:*)",
@@ -59,7 +51,6 @@
     ],
     "deny": [
       "Bash(git push:*)",
-      "Bash(git -C * push:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
       "Bash(git merge:*)",
@@ -71,33 +62,12 @@
       "Bash(git clean:*)",
       "Bash(git rm:*)",
       "Bash(git mv:*)",
-      "Bash(git -C * reset:*)",
-      "Bash(git -C * rebase:*)",
-      "Bash(git -C * merge:*)",
-      "Bash(git -C * checkout:*)",
-      "Bash(git -C * restore:*)",
-      "Bash(git -C * stash:*)",
-      "Bash(git -C * cherry-pick:*)",
-      "Bash(git -C * tag:*)",
-      "Bash(git -C * clean:*)",
-      "Bash(git -C * rm:*)",
-      "Bash(git -C * mv:*)",
-      "Bash(git -C * config:*)",
-      "Bash(git -C * update-ref:*)",
-      "Bash(git -C * symbolic-ref:*)",
-      "Bash(git -C * hook:*)",
       "Bash(git pull:*)",
       "Bash(git revert:*)",
       "Bash(git am:*)",
       "Bash(git apply:*)",
       "Bash(git filter-branch:*)",
       "Bash(git submodule:*)",
-      "Bash(git -C * pull:*)",
-      "Bash(git -C * revert:*)",
-      "Bash(git -C * am:*)",
-      "Bash(git -C * apply:*)",
-      "Bash(git -C * filter-branch:*)",
-      "Bash(git -C * submodule:*)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf ~:*)",
       "Bash(rm -rf $HOME:*)",
@@ -123,6 +93,20 @@
       "Bash(useradd:*)",
       "Bash(userdel:*)",
       "Bash(usermod:*)",
+      "Bash(gpasswd:*)",
+      "Bash(groupadd:*)",
+      "Bash(groupdel:*)",
+      "Bash(groupmod:*)",
+      "Bash(adduser:*)",
+      "Bash(addgroup:*)",
+      "Bash(deluser:*)",
+      "Bash(delgroup:*)",
+      "Bash(newgrp:*)",
+      "Bash(sg:*)",
+      "Bash(visudo:*)",
+      "Bash(setcap:*)",
+      "Bash(newuidmap:*)",
+      "Bash(newgidmap:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(nc:*)",
@@ -221,16 +205,11 @@
       "Edit(**/.git/info/exclude)",
       "Edit(**/.git/HEAD)",
       "Edit(**/.git/packed-refs)",
-      "Edit(**/.githooks/**)",
-      "Write(**/.git/hooks/**)",
-      "Write(**/.git/config)",
-      "Write(**/.git/info/exclude)",
-      "Write(**/.git/HEAD)",
-      "Write(**/.git/packed-refs)",
-      "Write(**/.githooks/**)"
+      "Edit(**/.githooks/**)"
     ],
     "disableBypassPermissionsMode": "disable"
   },
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
@@ -350,5 +329,6 @@
       ]
     }
   },
-  "model": "claude-fable-5[1m]"
+  "effortLevel": "medium",
+  "agentPushNotifEnabled": true
 }

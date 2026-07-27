@@ -3,102 +3,76 @@ paths:
   - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
 ---
 
-# Docstring Guidelines
+# Docstring and Comment Guidelines
 
-Authoritative rules for docstrings on public API elements. Auto-load when Claude touches source files matching the `paths:` above, and also loaded on demand by the `developer` (when writing) and `code-reviewer` (when reviewing) agents via `Read`.
+Authoritative rules for docstrings and code comments. Auto-load when Claude touches source files matching the `paths:` above, and also loaded on demand by the `developer` (when writing) and `code-reviewer` (when reviewing) agents via `Read`.
 
-## Scope
+## Core Principle: Document Only What the Code Cannot Say
 
-- **Required for**: every element visible across module boundaries — `pub` functions / methods / structs / enums / traits / type aliases / modules in Rust; `export`ed members or non-underscore / `__all__`-listed members in other languages.
-- **Not required for**: private, `pub(crate)`, or narrower elements. Rely on naming and why-comments instead.
-- **Language**: Docstrings MUST be written in **English**, regardless of the language used in specification documents or user-facing chat. Identifiers, type names, and code examples are also English.
+A docstring earns its place only when it carries information the reader cannot recover from the code itself — the name, signature, types, and the immediately surrounding code (including call sites). Self-evident elements get **no docstring**: absence is better than restating the obvious, because noise docstrings dilute the ones that matter and rot silently.
 
-## Core Rule: Concise, Bullets First
+**Types first, docstrings second** — a rule that can be enforced by the type system, validation, or construction-time logic is expressed there first (invalid states unrepresentable, per `~/.claude/rules/architecture.md` Entity-layer rules); a docstring or comment covers only the residue the types cannot express.
 
-A docstring is reference material a reader skims, not an essay. Keep it tight and move long rationale to its proper home (see "Where Each Why Lives" below).
+**Write a docstring when at least one of these holds** (then it is REQUIRED, not optional):
 
-- **Summary is always one line** — a noun phrase, never two sentences.
-- **Why is one or two sentences** stating purpose — not a narrative of history or alternatives.
-- **Contract, error variants, and side effects are bulleted** when they enumerate 2+ things — never a prose paragraph.
-- **Prose is the exception**, permitted only for: the one-line summary, the one-to-two-sentence Why, and a single short lead-in framing a bullet list.
+- **Error conditions** — which failures occur under which conditions; an error-returning signature reveals at most the error type, never the triggering conditions.
+- **Invariants / preconditions** — valid ranges, required call ordering, units, or parameter meaning that the type does not encode.
+- **Side effects** — I/O, state mutation, external calls, blocking, or concurrency / cancellation behavior that the name does not advertise.
+- **Domain meaning of an abstraction** — ports and domain concepts whose whole point is the promise they make; the contract is not recoverable from any single implementation.
+- **Surprising behavior** — anything a reasonable reader would guess wrong from the name and signature.
 
-Prose is PROHIBITED for: enumerating 2+ parameters / errors / cases, walking through reasons or consequences in paragraph form, or narrating implementation mechanics. This mirrors the "Bullets First" rule `pr-style.md` and `spec-style.md` already enforce.
+**Skip the docstring when none of the above holds** — typical cases:
 
-## Module-Level Docstrings
+- The name, signature, and types say everything (simple constructors, accessors, DTOs with self-describing fields, obvious type aliases).
+- The element is a thin delegation whose behavior is evident from the code it calls.
+- Reading the immediate call sites gives full understanding.
 
-Every module (and crate root) exposing public items MUST open with a module-level overview docstring, in the spirit of the Rust standard library's module pages. Language-specific syntax (Rust's `//!` placement) lives in `~/.claude/rules/rust.md`.
+The necessity judgement is the `developer`'s call at write time. `code-reviewer` checks both directions: a needed docstring that is missing, and a noise docstring that should be deleted.
 
-- **What the module provides** — the capability and the set of public items that deliver it, described as a whole rather than item-by-item.
-- **How the items relate** — orient the reader (e.g. production implementation vs. test double, paired sign / verify ports).
-- **Cross-cutting Why** — rationale shared by several items in the module is stated HERE, once; item docstrings then carry only what is specific to them and refer back to this overview by role.
+## Quality Rules (for docstrings that are written)
 
-The module overview is the one place a richer explanation is welcome; item docstrings stay short because the shared context already lives above them.
+- **English** — docstrings, identifiers, and code examples; regardless of spec-document or chat language.
+- **Summary is one line** — what the element is or promises, not how it is implemented.
+- **State only the non-obvious part** — do not pad with parameters or return values that are self-describing; cover exactly the information that justified writing the docstring.
+- **Bullets for enumerations of 2+** (error variants, preconditions, cases) — never a prose paragraph.
+- **Purpose over history** — a sentence of "why this exists" is welcome when the purpose is not obvious; alternatives-considered and migration history belong in an ADR or `git`, never in the docstring.
 
-## Content Structure
+## Body Comments
 
-Every public API docstring MUST follow this structure. Items 1 and 2 are mandatory; the rest are required when applicable.
+- Inline comments explain **why**, never what. No prefix convention — state the reason as a plain comment in the language's comment syntax, not a labeled one (`Why: ...`).
+- Implementation-mechanic rationale (why a generated implementation was chosen, why a defensive copy is taken, why error detail is dropped at a boundary) lives in a body comment next to the code — not in the docstring, which states the caller-facing information.
+- No commented-out code. TODO/FIXME only with a linked issue/ticket (per the Definition of Done).
 
-1. **Summary (one line)** — A noun phrase describing *what the element is* (its role), not how it is implemented.
-2. **Responsibility / Why** — Why this element exists and which use case or domain requirement it serves, in **one or two sentences**. Inline the reasoning, OR — when the same rationale is shared by several items in the module — state it once in the module overview and let each item refer to it by role (see "Where Each Why Lives" below). Never delegate to an external document (ADR / spec doc / ticket); longer history and alternatives-considered belong in an ADR or `git`, not here.
-3. **Contract**:
-   - Meaning and preconditions of each parameter (invariants, valid ranges).
-   - Meaning of the return value.
-   - Error variants that may be returned and the conditions that trigger them.
-4. **Side effects** — Declare them **when present**: I/O, state mutation, external calls, blocking, concurrency / async-cancellation behavior. Purity is the **default assumption**, so a pure function needs no marker; state "Pure" only when it genuinely aids the reader (e.g. a function that looks like it performs I/O but does not). Document the exception, not the rule.
-5. **Example (optional)** — Only for traits or public functions whose intended usage is non-obvious.
+## Module-Level Overviews (conditional)
 
-## Where Each "Why" Lives
+A module-level overview docstring is required only when **multiple public items interact** and the module only makes sense as a whole — e.g. a group of paired ports, a production implementation plus its test double, or a set of types that implement one protocol together. It states what the module provides, how the items relate, and any rationale shared by several items (stated once here, not repeated per item).
 
-The Why is mandatory, but it has four kinds — each with a different home. Splitting them is what keeps any single docstring short while preserving the reasoning.
+Modules with a single public item, or whose item set is self-evident, need no overview.
 
-| Kind of Why | Example | Home |
-|---|---|---|
-| Why the module / abstraction exists; how its items relate | "all time reads funnel through one port so tests can pin time" | Module overview docstring (once) |
-| Why an item exists / which use case it serves | "mints short-lived JWTs after API-key authentication" | Item docstring — one or two sentences |
-| Why a specific implementation mechanic was chosen | "zero-sized, so `Copy` avoids `Arc` indirection" | A `// why` body comment next to the code |
-| Why this design beat the alternatives; historical migration | trade-off analysis, "what we tried before" | ADR / `git blame` — NOT a docstring |
+## Ports (Special Rules)
 
-- **Item Why states purpose, not history** — the longer "why this way and not that way" goes to an ADR, reachable via `git blame`, never pasted into the docstring.
-- **Implementation mechanics go in `// why` body comments** — derive choices, zero-sizing, dropping error detail at a boundary, cfg-gating mechanics. These explain code a maintainer reads, not a contract a caller depends on, so they stay out of the public docstring.
-- **Shared Why is stated once** in the module overview — symmetric items (paired ports, blanket impls, a production impl plus its test double) refer to it rather than each repeating it.
+Ports are the prime "must document" case — the contract IS the abstraction. A port is expressed as the language's abstraction construct (Rust: trait; elsewhere: interface / protocol / abstract class).
 
-## Port Traits (Special Rules)
-
-- **Trait level**: Describe what the domain expects from this port — the abstract contract — not infrastructure details.
-- **Method level**: Input/output contract plus the *domain meaning* of each failure mode (not the underlying infrastructure error).
-
-## Writing Docstrings From Basic Design
-
-Specification documents (`docs/spec/`) are **basic design** — they state each port's role, each error's domain meaning, and the layer contracts, but they do **not** contain docstring drafts. The `developer` agent writes every docstring **from scratch** in the code, in English, using the spec document as context for the *Why* and the contract — not as text to transcribe.
-
-A docstring is complete only after the Why, contract, and error conditions are **grounded in the actual implementation**, including any constraints discovered during coding (failure conditions, concurrency assumptions, required call ordering).
+- **Interface level**: What the domain expects from this port — the abstract promise — never infrastructure details.
+- **Method level**: The domain meaning of each failure mode (not the underlying infrastructure error), plus any ordering or precondition the caller must uphold.
 
 ## Self-Contained: No External-Artifact References
 
-Docstrings MUST convey their intent from within the code's own rendered docs, not from an artifact that lives outside the code. Two cases differ:
+A docstring (or body comment) must convey its reasoning from within the code — do **not** cite ADR numbers, spec-document paths, phase names, ticket IDs, or commit hashes as load-bearing context. Write the reasoning itself ("so integration tests can substitute doubles at assembly time"), not the pointer ("per ADR-0006"). External documents have a different lifetime than the code; a docstring that depends on them rots while the code keeps compiling. Within-unit references (item → module overview, trait method → trait docs) are fine — they render together and travel with the code.
 
-- **Within-unit references are allowed and encouraged** — an item MAY defer shared context to its module overview, and a trait method MAY defer to the trait-level docstring ("See the trait-level documentation."). These render together (e.g. `cargo doc`) and travel with the code, so the intent stays self-contained.
-- **External-artifact references are prohibited** as load-bearing context — do **not** cite ADR numbers, spec-document paths, phase names, ticket IDs, or commit hashes.
+## Grounded in the Implementation
 
-- ADR numbers and phase names are **identifiers, not reasons** — strip them out and write the reasoning itself ("to allow integration tests to substitute test doubles at assembly time"), not the pointer ("per ADR-0006 / Phase 9e").
-- External documents have a different lifetime than the code: ADRs get renumbered, spec documents get consolidated, phases finish. A docstring that depends on them rots silently while the code keeps compiling.
-- The *purpose* of a docstring is that "reading the same place as the code conveys the design intent." Outsourcing that intent to another file defeats the purpose and creates duplicated maintenance cost.
-- If the background is genuinely too long to inline, summarize the load-bearing reasoning in the docstring and let the reader find further history via `git blame` / commit messages — not via a hard-coded path in the docstring.
-
-This rule applies to inline `// why` comments as well: write the *why*, not a pointer to where the *why* lives.
+Spec documents (`docs/spec/`) are basic design and carry no docstring drafts. Docstrings are written from scratch in the code and must reflect what the implementation actually does — including constraints discovered during coding (failure conditions, concurrency assumptions, call ordering). Do not transcribe spec wording.
 
 ## Prohibited
 
-- Docstrings that merely restate the signature in prose (e.g. "Takes a user ID and returns a user"). **A docstring without a Why is considered incomplete.**
-- Descriptions obvious from the type name alone (e.g. "A function that does X", "A class for Y").
-- Non-English docstrings on public API.
-- A docstring that merely echoes the spec's basic-design wording without being grounded in the actual implementation.
-- References to ADR numbers, `docs/spec/**` paths, phase names, ticket IDs, or commit hashes used as load-bearing context (see "Self-Contained" above).
-- A multi-sentence narrative Why where one or two sentences suffice; alternatives-considered or historical migration narrated in an item docstring instead of an ADR / `git`.
-- Implementation mechanics (derive choices, zero-sizing, cfg-gating, error-detail dropping) narrated in the public docstring instead of a `// why` body comment.
-- The same rationale repeated across symmetric items instead of stated once in the module overview.
-- An enumeration of 2+ parameters / errors / cases written as a prose paragraph instead of a bulleted list.
-- A docstring claiming it "honors" / "preserves the contract" without naming the specific guarantee (error variants / invariant / call ordering / wire shape). "Contract" alone hides what the caller may rely on — name the concrete obligation. Fine in a module overview contrasting a port's *abstract contract* with concrete impls, where the concept itself is the subject.
+- A docstring on a self-evident element (restates the signature or type name, e.g. "Takes a user ID and returns a user") — delete it.
+- A docstring that omits the non-obvious information that justified its existence (e.g. present, but silent on error conditions or side effects).
+- Non-English docstrings.
+- ADR numbers, `docs/spec/**` paths, phase names, ticket IDs, or commit hashes as load-bearing context.
+- Alternatives-considered or historical narrative (belongs in an ADR / `git`).
+- An enumeration of 2+ errors / preconditions / cases written as a prose paragraph instead of bullets.
+- Labeled comment prefixes (`Why:`, `NOTE:` as a mandated format) — plain why-comments only.
 
 ## Severity Matrix
 
@@ -106,20 +80,15 @@ This rule applies to inline `// why` comments as well: write the *why*, not a po
 
 | Finding | Severity |
 |---|---|
-| Missing docstring on a public API element | 🔴 blocker |
-| Docstring missing the **Why / Responsibility** (item 2) | 🔴 blocker ("incomplete docstring") |
+| Missing docstring on an element with non-obvious error conditions, invariants, side effects, or surprising behavior | 🔴 blocker |
+| Port interface or port method without a docstring stating its domain promise | 🔴 blocker |
+| Port docstring leaking infrastructure details into the inner layer | 🔴 blocker |
 | Docstring written in a language other than English | 🔴 blocker |
-| Docstring that only restates the signature or repeats the type name | 🔴 blocker (counts as missing-Why) |
-| Port-trait docstring leaking infrastructure details into the inner layer | 🔴 blocker |
-| Missing **Contract** (parameter preconditions / return meaning / error variants) when applicable | 🟡 suggestion |
-| Docstring asserting it preserves "the contract" without naming the specific guarantee (error variants / invariant / ordering / etc.), outside conceptual module-overview prose | 🟡 suggestion |
-| A function **with side effects** (I/O, state mutation, external call, blocking) that does not declare them | 🟡 suggestion |
-| Missing **Example** on a non-obvious trait or public function | 🟡 suggestion |
-| Port-trait method docstring that documents infrastructure errors instead of domain meaning | 🟡 suggestion |
-| Docstring (or `// why` comment) that cites an ADR number, spec-doc path, phase name, ticket ID, or commit hash as load-bearing context instead of inlining the reasoning | 🔴 blocker ("external-reference rot") |
-| Docstring that echoes the spec's basic-design wording when the implementation has revealed additional constraints not yet reflected | 🟡 suggestion ("stale docstring — ground it in the implementation") |
-| Item Why narrating history / alternatives instead of stating purpose (belongs in an ADR / `git`) | 🟡 suggestion |
-| Implementation mechanics narrated in the docstring instead of a `// why` body comment | 🟡 suggestion |
-| Enumeration of 2+ parameters / errors / cases written as prose instead of a bulleted list | 🟡 suggestion |
-| Same rationale duplicated across symmetric items instead of stated once in the module overview | 🟡 suggestion |
+| Docstring (or body comment) citing an ADR number, spec-doc path, phase name, ticket ID, or commit hash as load-bearing context | 🔴 blocker ("external-reference rot") |
+| Noise docstring on a self-evident element (restates signature / type name) — flag for deletion | 🟡 suggestion |
+| Docstring present but missing the non-obvious information it should carry (error conditions, side effects, preconditions) | 🟡 suggestion |
+| Missing module overview where multiple public items interact and only make sense together | 🟡 suggestion |
+| History / alternatives narrated in a docstring instead of an ADR / `git` | 🟡 suggestion |
+| Enumeration of 2+ errors / preconditions / cases written as prose instead of bullets | 🟡 suggestion |
+| Same rationale repeated across symmetric items instead of stated once in the module overview | 💭 nit |
 | Summary longer than one line | 💭 nit |

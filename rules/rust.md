@@ -173,35 +173,35 @@ Misplaced tests are graded in the Severity Matrix at the bottom of this file.
 ## Visibility and API Surface
 
 - Default to the narrowest visibility: private → `pub(crate)` → `pub(super)` → `pub`. Widen only when a real caller needs it.
-- `pub` items require English docstrings — see "Docstrings (Rust overlay)" below for the exact section layout.
+- `pub` items carry English docstrings only when the code alone cannot convey the contract (necessity criteria in `~/.claude/rules/docstrings.md`) — see "Docstrings (Rust overlay)" below for the Rust section layout. `# Errors` / `# Panics` / `# Safety` remain mandatory where applicable.
 - Avoid re-exporting third-party types through your public API unless the dependency is intentionally part of your contract.
 
 ## Docstrings (Rust overlay)
 
-This section maps the general rules in `~/.claude/rules/docstrings.md` onto Rust's idiomatic doc-comment conventions. On conflict with `docstrings.md`, this section wins for `.rs` files; the underlying "Summary / Why / Contract / Side effects / Example" requirements still apply.
+This section maps the general rules in `~/.claude/rules/docstrings.md` onto Rust's idiomatic doc-comment conventions. On conflict with `docstrings.md`, this section wins for `.rs` files. Whether an item gets a docstring at all follows the necessity criteria in `docstrings.md` ("Document Only What the Code Cannot Say") — with one Rust-specific exception: `# Errors`, `# Panics`, and `# Safety` are **always required** where applicable, even on an item that would otherwise be self-evident, because those conditions are never recoverable from the signature.
 
 ### Comment style
 
 - `///` documents the item that follows. Use it for `pub` functions, methods, structs, enums, unions, traits, type aliases, and constants.
 - `//!` is an inner doc comment. Use it for module-level docs (top of `mod.rs` / `<module>.rs`) and crate-level docs (top of `src/lib.rs`).
-- The `//!` overview is the home for the module's big picture and any Why shared by several items — write it like a Rust std library module page, then keep each item's `///` short (see `docstrings.md` "Module-Level Docstrings" and "Where Each Why Lives").
+- The `//!` overview is required only when multiple public items interact and the module only makes sense as a whole (see `docstrings.md` "Module-Level Overviews") — then write it like a Rust std library module page and keep each item's `///` short.
 - Place doc comments directly above the item — no blank line between the comment and the item.
-- Implementation-mechanic rationale (why a derive, why zero-sized, why error detail is dropped at a boundary) goes in ordinary `//` body comments next to the code — not in the `///` doc comment, which states the caller-facing contract.
+- Implementation-mechanic rationale (why a derive, why zero-sized, why error detail is dropped at a boundary) goes in ordinary `//` body comments next to the code — plain why-comments, no `// Why:` label — not in the `///` doc comment, which states the caller-facing information.
 
 ### Section heading layout
 
-Rustdoc uses standard `#`-headed sections. Layer the general docstring structure onto them as follows. Headings inside a doc comment use a single `#` at the line start (`# Examples`, `# Errors`, ...).
+Rustdoc uses standard `#`-headed sections. When a docstring is warranted (per the necessity criteria), lay it out as follows. Headings inside a doc comment use a single `#` at the line start (`# Examples`, `# Errors`, ...).
 
-| General item (from `docstrings.md`) | Rust placement |
+| Content | Rust placement |
 |---|---|
-| 1. Summary (one line) | First line of the doc comment, terminated by a blank line. Reused as the search-result snippet — keep it concise. |
-| 2. Why / Responsibility | One or two sentences after the summary, before any `#`-headed section. Why shared by several items goes in the module `//!`; implementation-mechanic Why goes in `//` body comments — not the doc comment (see `docstrings.md` "Where Each Why Lives"). |
-| 3. Contract — parameters and return | Bulleted list when 2+ parameters need explanation; a single sentence otherwise. Add `# Arguments` / `# Returns` headings only when the contract is non-trivial. |
-| 3. Contract — error variants | `# Errors` section. **Required** whenever the function returns `Result`. List the domain error variants and the conditions that trigger each. |
-| 3. Contract — panic conditions | `# Panics` section. **Required** whenever the function may panic, including a non-trivial `.expect("...")` and panics from a violated precondition. |
-| 4. Side effects | Surface in the Why / detail area **when present** (I/O, state mutation, external call, blocking, async cancellation behavior). Purity is the default assumption — add "Pure" only when it aids the reader (e.g. a function that looks like it performs I/O but does not), never as a blanket marker. |
-| 5. Example | `# Examples` section with a runnable doc test in a ` ```rust ` fenced block. **Required** on traits and on `pub` functions whose intended usage is non-obvious. |
-| Unsafe contract | `# Safety` section. **Required** for every `unsafe fn` and `unsafe trait`, listing the invariants the caller must uphold. |
+| Summary (one line) | First line of the doc comment, terminated by a blank line. Reused as the search-result snippet — keep it concise. |
+| Purpose (when not obvious) | One or two sentences after the summary, before any `#`-headed section. Rationale shared by several items goes in the module `//!`; implementation-mechanic rationale goes in `//` body comments. |
+| Non-obvious parameters / return | Bulleted list when 2+ need explanation; a single sentence otherwise. Add `# Arguments` / `# Returns` headings only when non-trivial. Self-describing parameters are not enumerated. |
+| Error conditions | `# Errors` section. **Always required** when the function returns `Result` — even on an otherwise self-evident item. List the domain error variants and the conditions that trigger each. |
+| Panic conditions | `# Panics` section. **Always required** whenever the function may panic, including a non-trivial `.expect("...")` and panics from a violated precondition. |
+| Side effects | State them **when present** and not advertised by the name (I/O, state mutation, external call, blocking, async cancellation behavior). Purity is the default assumption — add "Pure" only when it aids the reader, never as a blanket marker. |
+| Example | `# Examples` section with a runnable doc test in a ` ```rust ` fenced block. **Required** on traits and on `pub` functions whose intended usage is non-obvious. |
+| Unsafe contract | `# Safety` section. **Always required** for every `unsafe fn` and `unsafe trait`, listing the invariants the caller must uphold. |
 
 ### Intra-doc links
 
@@ -222,7 +222,7 @@ Rustdoc uses standard `#`-headed sections. Layer the general docstring structure
 
 ### Lint enforcement
 
-- Enable `#![warn(missing_docs)]` at the crate root of every library crate so the compiler enforces docstring presence on `pub` items. `cargo make lint` MUST remain green with this lint active.
+- Do NOT enable `#![warn(missing_docs)]` — docstring presence follows the necessity criteria in `docstrings.md`, not blanket coverage; the lint would force noise docstrings onto self-evident items. Prefer `clippy::missing_errors_doc` / `clippy::missing_panics_doc` / `clippy::missing_safety_doc` to enforce the always-required `# Errors` / `# Panics` / `# Safety` sections mechanically.
 - Docstring-structure violations specific to Rust are graded in the Severity Matrix at the bottom of this file, in addition to the matrix in `docstrings.md`.
 
 ## Async

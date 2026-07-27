@@ -1,6 +1,7 @@
 ---
 name: pr-writer
 description: Creates the per-aggregation PR document `docs/pr/<feature>/<N>-<aggregation>.md` from scratch in Japanese. Invoked when the main conversation aggregates one or more developer-completed tasks into a PR. Reads the capability spec documents, the shipped PBI's file (`docs/tasks/<work-name>/<N>-<pbi>.md` — slice-level acceptance criteria and task table), and the cumulative diff, then composes ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. Use PROACTIVELY when the orchestrator triggers an aggregation in Phase 3 of `~/.claude/CLAUDE.md`'s Orchestration Loop.
+model: claude-sonnet-5
 color: cyan
 ---
 
