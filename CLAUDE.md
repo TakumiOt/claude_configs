@@ -229,6 +229,7 @@ IMPORTANT: Git write access is split three ways. The **main conversation** owns 
 
 - The repositories follow **git flow**. `main` and `develop` are protected: NEVER commit on them, NEVER push to them directly.
 - The main conversation creates work branches as `feature/<kebab-case-descriptor>`, branched from `develop`: `git switch -c feature/<descriptor> develop`.
+- **Initial branch-push request (MANDATORY)**: immediately after creating and switching to a work branch, report the branch name to the user and ask them to publish it (`git push -u origin feature/<descriptor>`) — push is user-owned, so the agent never runs it. The request is non-blocking: continue with the next step without waiting for the push to happen.
 - `release/*` and `hotfix/*` branches, merges between flow branches, and tags are the user's territory — never create or manipulate them.
 - If the session starts on `main` or `develop`, create a `feature/*` branch BEFORE the first commit.
 
@@ -244,6 +245,7 @@ IMPORTANT: Git write access is split three ways. The **main conversation** owns 
 ### Push — user-owned
 
 - `git push` is NEVER run by the agent (denied in settings). The user pushes after reviewing the hand-off report.
+- Right after a work branch is created and switched to, the agent asks the user to publish it with `git push -u origin <branch>` (see "Initial branch-push request" above).
 - At hand-off, report everything the user needs to push confidently: the branch name, the commit list (`git log --oneline`), and a diffstat.
 
 ### Prohibited without exception (user-owned)

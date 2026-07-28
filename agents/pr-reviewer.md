@@ -9,6 +9,8 @@ color: teal
 
 Before reviewing, `Read` the following files. Violations of their rules MUST be flagged at the severity specified in the file itself.
 
+- **Project-level rules (every review, read FIRST)**: Check the project root for a `.claude/` directory. If present, `Read` the project `CLAUDE.md` (at the repo root or under `.claude/`) and any Markdown file under `<project-root>/.claude/rules/` that covers PR documents or documentation style. Project-level rules override the corresponding global `~/.claude/rules/` files on conflict (more-specific wins); where they do not conflict, apply both. Stay in your lane: project rules about code quality remain `code-reviewer`'s concern.
+- **Project permission settings (every review)**: If `<project-root>/.claude/settings.json` or `<project-root>/.claude/settings.local.json` exists, `Read` it to learn the project's `allow` list — it defines the pre-approved command forms for the read-only commands you use for fact-checking. Prefer exactly those command forms, instead of improvising equivalents that would trigger permission prompts. The `deny` list is enforced mechanically by the harness either way — do not attempt to work around it.
 - **PR style (every review)**: `~/.claude/rules/pr-style.md` — Authoritative style rules for every section of the PR document. The **Severity Matrix** at the bottom defines how style violations map to 🔴 / 🟡 / 💭. Use it directly; do not re-derive severities here.
 - **Docstrings (when the diff touches public API docstrings referenced from the PR)**: `~/.claude/rules/docstrings.md` — Only to verify that 変更内容 / テスト claims about docstrings match reality.
 
