@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Independent reviewer of code changes. Checks Clean Architecture compliance (dependency direction, port placement, no framework leakage into inner layers), BDD/Detroit-school test quality, function length (≤50 lines), error handling at layer boundaries, and language-specific best practices. Use PROACTIVELY after any implementation change. Does NOT modify code — produces review findings only.
-model: claude-opus-5
+model: claude-opus-4-8
 color: purple
 ---
 

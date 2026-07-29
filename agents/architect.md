@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Designs Clean Architecture layer boundaries, use cases, and port interfaces, and authors the living specification (`docs/spec/`, basic-design granularity, capability-indexed) plus task decomposition. Produces design/spec artifacts only — does NOT write implementation code. Use PROACTIVELY before any non-trivial feature work to lock down domain model, error types, and inter-layer contracts.
-model: claude-opus-5
+model: claude-opus-4-8
 color: indigo
 ---
 
