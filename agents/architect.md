@@ -60,7 +60,7 @@ All design artifacts MUST be written to files in the project repository. Do not 
   - `docs/tasks/<work-name>/` — the Task Decomposition directory. `<work-name>` is a kebab-case descriptor of what the tasks accomplish, not a crate name. Holds a Japanese `README.md` backlog index plus one PBI file per slice (`<N>-<pbi-slug>.md`), separate from the spec documents.
   - `docs/tasks/<work-name>/README.md` — the backlog index (Japanese). State 目的・責務 (what this work delivers, in one line), 収録方針 (one PBI per file, `<N>-<pbi-slug>.md` naming with `<N>` = ship order), and a 目次 = the PBIs in ship order, one line each with a relative link and any cross-PBI dependency noted. Keep it current whenever PBIs are added, re-sliced, or renamed.
   - `docs/tasks/README.md` — the tasks directory entry point (Japanese). State 目的・責務 (holds Task Decomposition directories, one per coherent unit of work — NOT spec documents), 収録方針 (kebab-case work-descriptor directory names, the PBI-file format defined in this agent file), and a 目次 = links to the current Task Decomposition directories. Create / update it whenever you add or rename a work directory.
-  - `docs/pr/**` — **You do NOT create any file here.** PR documents are produced by `pr-writer` at aggregation time in Phase 3.
+  - `docs/pr/**` — **You do NOT create any file here.** PR documents are produced by `pr-writer` in two stages (drafted after the design gate, completed at aggregation in Phase 3).
 - **Basic design only**: Spec documents stay at basic-design granularity. Do NOT put type signatures, error-`enum` definitions, SQL/DDL, or docstring drafts in any spec document — those are the code's responsibility; rationale / trade-offs go to ADRs, not the spec (`~/.claude/rules/spec-style.md` "Core Principle: Living Specification"). Refer to ports and types by name and role instead.
 - **Cross-references**: When an ADR is referenced from a spec document (or vice versa), use relative Markdown links so navigation works in any Markdown viewer.
 - **Workflow**: Before completing a design task, write/update the relevant files, then report to the user the list of files created or modified (full paths).
@@ -215,7 +215,7 @@ Per `~/.claude/CLAUDE.md`, the main conversation holds the **design gate**: it r
 
 If the user requests changes (to the slicing, the ordering, or individual tasks), revise the spec / task documents accordingly, then re-report — the gate re-runs on the revised plan.
 
-`pr-writer` will later aggregate completed tasks into PR documents during Phase 3, grouping their AC under `###` task-scope headings; you do not anticipate or pre-allocate that aggregation.
+`pr-writer` authors each PBI's PR document in two stages (drafted from your PBI file after the design gate, completed from the diff at aggregation), grouping AC under `###` task-scope headings; you do not anticipate or pre-allocate that aggregation.
 
 ## 💬 Communication Style
 - Lead with the problem and constraints before proposing solutions

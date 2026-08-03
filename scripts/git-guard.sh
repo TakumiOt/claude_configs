@@ -48,7 +48,12 @@ if [ "$is_gh" = 1 ]; then
       "PRs are always opened as drafts: gh pr create --draft ... The user marks them ready after review."
     has '--body-file([[:space:]=]|$)|[[:space:]]-F([[:space:]]|$)' || block \
       "gh pr create without --body-file is prohibited." \
-      "The PR body is the reviewed PR document: gh pr create --draft --body-file docs/pr/<feature>/<N>-<aggregation>.md — never a hand-written body."
+      "The PR body is the PR document: gh pr create --draft --body-file docs/pr/<feature>/<N>-<aggregation>.md — never a hand-written body."
+  fi
+  if has '(^|[^[:alnum:]_.-])gh[[:space:]]+pr[[:space:]]+edit([[:space:]]|$)'; then
+    has '--body([[:space:]=]|$)|[[:space:]]-b([[:space:]]|$)' && block \
+      "gh pr edit with an inline --body is prohibited." \
+      "The PR body always comes from the PR document: gh pr edit <number> --body-file docs/pr/<feature>/<N>-<aggregation>.md"
   fi
 fi
 

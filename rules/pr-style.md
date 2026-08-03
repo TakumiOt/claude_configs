@@ -56,6 +56,15 @@ Prose is PROHIBITED for: enumeration of 2+ items, walking through reasons / cons
 
 Worked examples for "lead with role" and "group by concept" live in `~/.claude/agents/pr-writer.md` "Concrete Examples".
 
+## Stage-1 Placeholder (draft PR period)
+
+The PR document is authored in two stages (`~/.claude/CLAUDE.md` Phase 1 step 3 / Phase 3). Between them, the implementation-dependent sections are placeholders by design:
+
+- During stage 1 (from draft PR opening until aggregation), each of 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点 consists of exactly the canonical line `実装完了後に記載。` — nothing more.
+- Free-form "planned" content in these sections (predicted diffs, expected test lists) is prohibited at stage 1 — it is fabrication ungrounded in any diff.
+- The Severity Matrix below grades the **completed (stage-2) document**; `pr-reviewer` reviews only after stage 2. A placeholder line remaining at review time is 🔴.
+- Design-grounded sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント) follow the full style rules from stage 1 onward.
+
 ## Per-Section Style
 
 Every section follows the Formatting Constraints above. Section-specific rules below.
@@ -147,6 +156,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 | 受け入れ基準 lacks `###` task-scope groupings (flat bullet list) | 🔴 |
 | 受け入れ基準 lacks the lead PBI group (slice sentence heading + slice-level AC) | 🟡 |
 | `docs/pr/` or a `docs/pr/<feature>/` directory missing its `README.md` entry point, or the feature README not updated when this PR was added | 🔴 |
+| Stage-1 placeholder line `実装完了後に記載。` remaining in any section at review time (stage 2 incomplete) | 🔴 |
 | スコープ describes only internal plumbing with no exercisable end-to-end behavior (the PR is not a verifiable vertical slice) | 🟡 |
 | テスト shows only unit coverage with no end-to-end / integration / manual verification path for the slice | 🟡 |
 | Lead-in sentence longer than one sentence | 💭 |
