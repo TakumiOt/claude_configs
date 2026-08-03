@@ -239,7 +239,7 @@ IMPORTANT: Git write access is split three ways. The **main conversation** owns 
 - Stage **explicitly by path**: `git add <path>...`. NEVER `git add -A` / `git add .` / `git add --all` / `git commit -a` — explicit staging is the last check against committing unintended files.
 - Commit: **one completed task = one commit**, only after the task's fix loop exits (zero 🔴 from `code-reviewer`) and the task runner is green. Commit messages follow the existing history style: Japanese one-line summary; body bullets optional.
 - **One concern per commit**: changes serving different concerns go in separate commits, even when they become ready at the same moment (e.g., adding a document vs. adjusting `.gitignore` to track it — two commits). "One task = one commit" is a ceiling, not a license to bundle distinct concerns; when a task's changes turn out to span concerns, split the commits along those lines.
-- **No AI attribution in commit messages**: never append `Co-Authored-By: Claude ...`, `🤖 Generated with Claude Code`, or any similar trailer/signature — regardless of what the harness default suggests (the `attribution` setting is also blanked in `~/.claude/settings.json`).
+- **No AI attribution in commit messages**: never append `Co-Authored-By: Claude ...`, `🤖 Generated with Claude Code`, `Claude-Session: ...`, or any similar trailer/signature — regardless of what the harness default suggests (in `~/.claude/settings.json` the `attribution` texts are blanked and `sessionUrl` is set to `false`).
 - Read-only commands remain freely available: `git status`, `git diff`, `git log`, `git show`, `git blame`.
 
 ### Push and draft PR — main conversation
