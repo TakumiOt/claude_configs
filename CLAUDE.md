@@ -53,7 +53,7 @@ If any criterion fails, fall back to Path C. Typical Path B work: bug fix scoped
 1. **developer** → implements the change via TDD (Red → Green → Refactor). The main conversation passes the change description directly in the invocation prompt; `developer` does NOT look for any spec directory (`docs/spec/<capability>/`) or a PR skeleton (none exists). Reports the modified file list at hand-off. Does NOT create or modify any document under `docs/`.
 2. **code-reviewer** → grades the code, tests, docstrings, dependencies, and scope adherence against the change description. Findings route to `developer`.
 3. **Fix loop** — if `code-reviewer` returns any 🔴 blocker (or any 🟡 the user has not explicitly deferred), re-invoke `developer`, then re-run `code-reviewer`. Exit when zero 🔴 remain.
-4. **Commit & completion report (MANDATORY)** — as soon as the Fix loop exits, the main conversation commits the change (one commit, per "Git Operations") and reports the completion summary to the user. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). No confirmation wait is required; pushing the branch is the user's job per "Git Operations". This is the same step as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
+4. **Commit & completion report (MANDATORY)** — as soon as the Fix loop exits, the main conversation commits the change (one commit, per "Git Operations") and reports the completion summary to the user. The report includes: the change description (one sentence), the modified file list, a one-line test/lint/build outcome, and any deviation from the original change description (with rationale). No confirmation wait is required; the main conversation pushes the `feature/*` branch itself per "Git Operations", and whether to open a PR for Path B work is the user's call. This is the same step as Phase 2 step 4 in Path C — adapted to Path B's single-task shape.
 
 **Reduced Definition of Done**: items 1, 1a, 1b, 1c, and the `pr-reviewer` clause of item 8 in the Definition of Done do NOT apply on Path B. All other items still apply (test-first, task runner green, docstrings where the necessity criteria require them, function size ≤ 50 lines, no commented-out code, modified file list reported, `code-reviewer` passed, commit & completion report done).
 
@@ -124,7 +124,7 @@ PR files use the PR sequence number as a prefix (`1-`, `2-`, ...). `<aggregation
 
 ### Orchestration Loop (Path C, MANDATORY)
 
-For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. The loop has exactly two user gates — the **design gate** (Phase 1 step 2, always blocking: implementation direction is aligned before any code) and the **aggregation hand-off** (Phase 3 step 5, where the user takes over for push and PR creation) — and between them it does not pause to ask the user.
+For every non-trivial change that does NOT qualify for Path A or Path B, the main conversation MUST execute the loop end-to-end. Path C has three phases — Design → Per-Task Implementation Loop → Aggregation Gate + Per-PR Loop. Phases run linearly; sub-loops repeat until convergence. The loop has exactly two user gates — the **design gate** (Phase 1 step 2, always blocking: implementation direction is aligned before any code) and the **aggregation hand-off** (Phase 3 step 5, where the main conversation pushes the branch, opens a draft PR, and the user takes over for review / ready 化 / merge) — and between them it does not pause to ask the user.
 
 #### Phase 1 — Design
 
@@ -173,7 +173,7 @@ For each aggregation:
 2. **pr-writer** → creates `docs/pr/<feature>/<N>-<aggregation>.md` from scratch (no skeleton exists). Reads **every capability spec directory the bundled tasks touch** (`docs/spec/<capability>/`), the shipped PBI's file (`docs/tasks/<work-name>/<N>-<pbi>.md` — its slice sentence, slice-level acceptance criteria, and task table), and the cumulative diff. Fills ALL sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント / 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点) per `~/.claude/rules/pr-style.md`. The 関連ドキュメント section lists every capability spec directory referenced. Reports the file path and any mismatch surfaced during self-check.
 3. **pr-reviewer** → grades the PR document on two axes: style (against the `pr-style.md` Severity Matrix) and factual consistency (against the shipped PBI — its slice-level acceptance criteria and bundled task entries —, the cumulative diff, and **every capability spec directory the bundled tasks touch**, including that the spec was reconciled to match the implementation). Findings route to `pr-writer` (prose), `architect` (spec drift / task-list drift in any capability spec directory), or `developer` (when a PR-doc inconsistency reflects the implementation being out of task scope).
 4. **PR fix loop** — re-invoke whichever agent owns the change and re-run `pr-reviewer` until zero 🔴 remain and all non-deferred 🟡 are addressed. If `architect` reconciles the spec or revises the Task Decomposition during this loop (because the implementation deviated from the spec in a way that requires the spec to be updated), re-run `pr-reviewer` after the spec update.
-5. **Aggregation hand-off (MANDATORY)** — the main conversation reports the aggregation summary to the user and stops: the bundled tasks (scope sentences), the PR document path, the end-to-end behavior the slice makes exercisable, the branch name, the commit list (`git log --oneline`), and a diffstat. Push, PR creation (`gh pr create`), and merge are the user's review workflow, done on their side. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
+5. **Aggregation hand-off (MANDATORY)** — the main conversation pushes the branch and opens a draft PR whose body is the reviewed PR document (`gh pr create --draft --body-file docs/pr/<feature>/<N>-<aggregation>.md`, title = the PBI's slice sentence condensed to 50 ± 5 characters per "Git Operations"), then reports the aggregation summary to the user and stops: the bundled tasks (scope sentences), the PR document path, the end-to-end behavior the slice makes exercisable, the branch name, the commit list (`git log --oneline`), a diffstat, and the draft PR URL. Reviewing the draft, marking it ready, and merging are the user's review workflow, done on their side. The next aggregation re-enters Phase 3 with whatever tasks Phase 2 has completed since.
 
 The overall feature is complete when every PBI in the Task Decomposition has shipped: all of its tasks exited their fix loops, its aggregation exited the PR fix loop, and its slice-level acceptance criteria were exercised on the running system. "All tasks implemented and the behavior verified" is the completion gate that pairs with the design gate.
 
@@ -182,7 +182,7 @@ When invoking the next agent, always pass the previous agent's output (spec arti
 The user is consulted **only** at these points (never between phases of the loop itself):
 
 - **Design gate** — after every Phase 1, before any implementation (Phase 1 step 2). Always required; the user approves the spec + PBI-grouped Task Decomposition as the direction-alignment point.
-- **Aggregation hand-off** — after every aggregation exits its PR fix loop (Phase 3 step 5). Always required; the report (branch / commit list / diffstat) is what lets the user push and open the PR themselves.
+- **Aggregation hand-off** — after every aggregation exits its PR fix loop (Phase 3 step 5). Always required; the report (branch / commit list / diffstat / draft PR URL) is what the user reviews before marking the PR ready and merging.
 - **PBI re-slice** — when implementation reveals the PBI slicing was wrong and `architect` proposes a revised backlog, the revision passes the design gate again before implementation resumes.
 - **Dependency approval** (per the Dependency Approval Process below).
 - **Ambiguous requirements** that `architect` cannot resolve from the available context.
@@ -205,7 +205,7 @@ On the Lightweight Path (Path B) the spec / PR-document items are skipped — se
 6. **No commented-out code, no orphan TODO/FIXME**: TODO/FIXME only if linked to an issue/ticket.
 7. **Modified file list reported**: `developer` reports the full list of created/modified files at hand-off.
 8. **Independent reviews passed**: BOTH `code-reviewer` (code / tests / docstrings / dependencies / scope adherence) AND `pr-reviewer` (PR document style + factual consistency) reviewed the change; all 🔴 blockers resolved; 🟡 suggestions addressed or explicitly deferred with rationale.
-9. **Committed and reported**: Each completed task is committed by the main conversation on a `feature/*` work branch (one green task = one commit, staged explicitly by path, per "Git Operations") and its completion summary reported (scope, modified file list, test/lint/build outcome, any spec deviation). For each aggregation, the aggregation hand-off report (branch name, commit list, diffstat) has been delivered — the push itself is the user's (Phase 3 step 5). Defined by Path C Phase 2 step 4 / Phase 3 step 5 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
+9. **Committed and reported**: Each completed task is committed by the main conversation on a `feature/*` work branch (one green task = one commit, staged explicitly by path, per "Git Operations") and its completion summary reported (scope, modified file list, test/lint/build outcome, any spec deviation). For each aggregation, the branch has been pushed, a draft PR opened (`gh pr create --draft`), and the hand-off report (branch name, commit list, diffstat, draft PR URL) delivered — review / ready 化 / merge are the user's (Phase 3 step 5). Defined by Path C Phase 2 step 4 / Phase 3 step 5 and Path B Reduced flow step 4. Applies on BOTH Path B and Path C.
 
 ## Dependency Approval Process (MANDATORY)
 
@@ -223,13 +223,13 @@ Adding a new external library/crate/package requires explicit approval. No agent
 
 ## Git Operations
 
-IMPORTANT: Git write access is split three ways. The **main conversation** owns branch creation, staging, and commits. The **user** owns push, PR creation, and merge. **Subagents own nothing** — no agent (`architect` / `developer` / `pr-writer` / `code-reviewer` / `pr-reviewer`) ever runs a state-modifying git command; each stops at reporting its modified file list.
+IMPORTANT: Git write access is split three ways. The **main conversation** owns branch creation, staging, commits, pushing `feature/*` branches, and draft PR creation (`gh pr create --draft`). The **user** owns PR review, marking the PR ready, merge, and history rewriting. **Subagents own nothing** — no agent (`architect` / `developer` / `pr-writer` / `code-reviewer` / `pr-reviewer`) ever runs a state-modifying git command; each stops at reporting its modified file list.
 
 ### Branch model (git flow) and protected branches
 
 - The repositories follow **git flow**. `main` and `develop` are protected: NEVER commit on them, NEVER push to them directly.
 - The main conversation creates work branches as `feature/<kebab-case-descriptor>`, branched from `develop`: `git switch -c feature/<descriptor> develop`.
-- **Initial branch-push request (MANDATORY)**: immediately after creating and switching to a work branch, report the branch name to the user and ask them to publish it (`git push -u origin feature/<descriptor>`) — push is user-owned, so the agent never runs it. The request is non-blocking: continue with the next step without waiting for the push to happen.
+- **Initial branch publish (MANDATORY)**: immediately after creating and switching to a work branch, the main conversation publishes it itself (`git push -u origin feature/<descriptor>`) and reports the branch name to the user, then continues with the next step.
 - `release/*` and `hotfix/*` branches, merges between flow branches, and tags are the user's territory — never create or manipulate them.
 - If the session starts on `main` or `develop`, create a `feature/*` branch BEFORE the first commit.
 
@@ -242,22 +242,24 @@ IMPORTANT: Git write access is split three ways. The **main conversation** owns 
 - **No AI attribution in commit messages**: never append `Co-Authored-By: Claude ...`, `🤖 Generated with Claude Code`, or any similar trailer/signature — regardless of what the harness default suggests (the `attribution` setting is also blanked in `~/.claude/settings.json`).
 - Read-only commands remain freely available: `git status`, `git diff`, `git log`, `git show`, `git blame`.
 
-### Push — user-owned
+### Push and draft PR — main conversation
 
-- `git push` is NEVER run by the agent (denied in settings). The user pushes after reviewing the hand-off report.
-- Right after a work branch is created and switched to, the agent asks the user to publish it with `git push -u origin <branch>` (see "Initial branch-push request" above).
-- At hand-off, report everything the user needs to push confidently: the branch name, the commit list (`git log --oneline`), and a diffstat.
+- `git push` is allowed for `feature/*` branches only — never to `main` / `master` / `develop` / `release/*` / `hotfix/*` (enforced by `git-guard.sh`), and never with force flags.
+- PRs are ALWAYS created as drafts: `gh pr create --draft` (a non-draft `gh pr create` is blocked by `git-guard.sh`). The user reviews the draft, marks it ready, and merges on their side.
+- The PR body is the reviewed PR document, passed verbatim via `--body-file docs/pr/<feature>/<N>-<aggregation>.md`. Never hand-write a separate PR body.
+- The PR title is derived from the shipped PBI's slice sentence and kept to **50 ± 5 characters** (45–55): use the slice sentence as-is when it fits, otherwise condense it without changing what the slice delivers.
+- At hand-off, report everything the user needs to review confidently: the branch name, the commit list (`git log --oneline`), a diffstat, and the draft PR URL.
 
 ### Prohibited without exception (user-owned)
 
 - History rewriting and destructive operations: `commit --amend`, `rebase`, `reset`, `merge`, `pull`, `checkout`, `restore`, `stash`, `cherry-pick`, `revert`, `tag`, `clean`, branch delete / rename. If an already-made commit needs fixing, report it and let the user rewrite history themselves.
 - Hook and config manipulation: `git config`, inline `git -c` overrides, `core.hooksPath`, `--no-verify` (including `commit -n`), editing `.git/hooks` or `.git/config`. Pre-commit hooks are a mandatory safety layer — never bypass them; if a hook fails, fix the cause or report it.
-- Push, PR creation, and merge: `git push` / `gh pr create` / merging are the user's review workflow. Deliver the hand-off report and stop.
+- PR review workflow: `gh pr merge` / `gh pr ready` / `gh pr close` and merging into flow branches are the user's. The agent stops at the draft PR and the hand-off report.
 
 ### Enforcement and secret safety
 
 - `~/.claude/settings.json` (allow / deny lists) and the `~/.claude/scripts/git-guard.sh` PreToolUse hook enforce this policy mechanically. If a legitimate operation gets blocked, report it to the user — do not work around the guard.
-- If the repository has no pre-commit secret scan (e.g. gitleaks), surface that to the user before the first commit of a work unit. The user's pre-push review must not be the only line of defense against leaking credentials.
+- If the repository has no pre-commit secret scan (e.g. gitleaks), surface that to the user before the first commit of a work unit. Because the agent now pushes `feature/*` branches itself, a pre-commit secret scan is the primary line of defense against leaking credentials — the user's draft-PR review comes only after the push.
 
 ## Coding
 

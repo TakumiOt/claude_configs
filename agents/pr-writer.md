@@ -154,7 +154,7 @@ If it deviated, each deviation is a parent bullet naming the deviation, with sub
    - **テスト table pass**: count themes inside the `## テスト` section. If 3+ themes exist, the section MUST use a Markdown table with `層 | テーマ | 主なケース` columns instead of bullets. Bullets are allowed only when the section has 1–2 themes or no tests were added.
    - **Japanese prose quality pass**: re-read the body once and apply the four sub-rules from the Language Policy section above. In particular: scan for English noun phrases outside backticks, forced kanji translations of katakana-standard terms, coined kanji compounds, and direct-translation syntax (「〜することが可能」「〜が行われる」「〜の導入を実施した」). Rewrite any hit before declaring done.
 5. **Report** the file path created and any inconsistencies surfaced during self-check (e.g., a bundled task AC with no corresponding test, or diff content reaching beyond any bundled task's declared スコープ).
-6. **Stop**. Do not commit, do not propose committing — commits are the main conversation's job, and pushes / PR creation require the user (per `~/.claude/CLAUDE.md` "Git Operations").
+6. **Stop**. Do not commit, do not propose committing — commits, pushes of `feature/*` branches, and draft PR creation are the main conversation's job; PR review, marking ready, and merge stay user-owned (per `~/.claude/CLAUDE.md` "Git Operations").
 
 ## Anti-Patterns You Reject
 

@@ -38,7 +38,7 @@ If no file exists for the current language, fall back to the general guidance in
 - **Function size**: Hard limit 50 lines per function. Split when exceeded.
 - **Comments**: Self-explanatory code first. Inline comments explain *why*, never *what*. No commented-out code. No TODO/FIXME without a linked issue.
 - **Docstrings**: Necessity-based, not blanket — write one only when the code alone cannot convey the information (non-obvious error conditions, invariants / preconditions, side effects, port contracts, surprising behavior); self-evident elements get NO docstring. Criteria and quality rules in `~/.claude/rules/docstrings.md` (Rust-specific overlay in `~/.claude/rules/rust.md` "Docstrings (Rust overlay)" — `# Errors` / `# Panics` / `# Safety` always required where applicable).
-- **Git**: You NEVER run any state-modifying git command (`commit` / `push` / `merge` / `rebase` / `reset` / branch create or switch / `stash` / `cherry-pick`). Per `~/.claude/CLAUDE.md` "Git Operations", commits are performed exclusively by the main conversation after your task exits its fix loop; push, PR creation, and merge stay user-owned. Just stop after reporting the modified file list. Read-only commands (`git status` / `git diff` / `git log` / `git show` / `git blame`) remain available for investigation.
+- **Git**: You NEVER run any state-modifying git command (`commit` / `push` / `merge` / `rebase` / `reset` / branch create or switch / `stash` / `cherry-pick`). Per `~/.claude/CLAUDE.md` "Git Operations", commits, pushes of `feature/*` branches, and draft PR creation are performed exclusively by the main conversation after your task exits its fix loop; PR review, marking ready, and merge stay user-owned. Just stop after reporting the modified file list. Read-only commands (`git status` / `git diff` / `git log` / `git show` / `git blame`) remain available for investigation.
 - **Compaction-safe**: When summarizing, always preserve the list of modified files.
 
 ## 🔴 Critical Rules
@@ -65,7 +65,7 @@ For each use case or behavior:
 1. **Red** — Write one failing test that describes the next increment of behavior. Run it. Confirm it fails for the right reason.
 2. **Green** — Write the minimum production code to make the test pass. Resist over-engineering.
 3. **Refactor** — With tests green, improve structure: extract methods, rename, collapse duplication. Rerun tests after each change.
-4. **Stopping point** — At a natural stopping point, report the modified file list and current state to the user. Do NOT commit, do NOT propose committing — the main conversation commits after the fix loop, and the user handles pushes.
+4. **Stopping point** — At a natural stopping point, report the modified file list and current state to the user. Do NOT commit, do NOT propose committing — the main conversation commits after the fix loop and handles pushes / draft PR creation.
 
 ## 🏗️ Layer-by-Layer Implementation Order
 
@@ -98,4 +98,4 @@ For a language without a rule file, adapt Clean Architecture + BDD principles to
 - Catching an infrastructure exception and re-raising it unchanged through inner layers.
 - Silently bypassing a failing test with an ignore / skip marker.
 - Creating a 200-line function because "splitting would hurt readability" — split anyway, rename until it reads well.
-- Running or proposing any state-modifying git command. Commits belong to the main conversation; pushes and PRs belong to the user.
+- Running or proposing any state-modifying git command. Commits, pushes, and draft PRs belong to the main conversation; PR review and merge belong to the user.

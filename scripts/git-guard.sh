@@ -3,8 +3,9 @@
 # (applies to main agent + all subagents).
 # The settings.json allow/ask/deny lists handle subcommand-level permissions; this
 # hook blocks what prefix matching cannot express: flag-level bypass vectors
-# (--no-verify, git -c, --amend, --force), bulk staging, and writes to the
-# protected git-flow branches (main / master / develop).
+# (--no-verify, git -c, --amend, --force), bulk staging, writes to the
+# protected git-flow branches (main / master / develop / release/* / hotfix/*),
+# and the gh review workflow (merge / ready / close; PRs must be drafts).
 # Registered in ~/.claude/settings.json under hooks.PreToolUse with matcher "Bash".
 # Exit 2 blocks the command and feeds stderr back to the agent.
 # Note: patterns match the raw command string, so a commit message that contains a
@@ -14,8 +15,12 @@ input="$(cat)"
 command="$(printf '%s' "$input" | jq -r '.tool_input.command // empty')"
 [ -z "$command" ] && exit 0
 
-# Only inspect commands that invoke git as a command word.
-printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_.-])git([[:space:]]|$)' || exit 0
+# Only inspect commands that invoke git or gh as a command word.
+is_git=0
+is_gh=0
+printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_.-])git([[:space:]]|$)' && is_git=1
+printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_.-])gh([[:space:]]|$)' && is_gh=1
+[ "$is_git" = 0 ] && [ "$is_gh" = 0 ] && exit 0
 
 has() { printf '%s' "$command" | grep -Eq -- "$1"; }
 
@@ -28,6 +33,26 @@ block() {
   } >&2
   exit 2
 }
+
+# --- gh policy: draft PR creation only; review workflow stays user-owned ------
+if [ "$is_gh" = 1 ]; then
+  has '(^|[^[:alnum:]_.-])gh[[:space:]]+pr[[:space:]]+(merge|ready|close)([[:space:]]|$)' && block \
+    "gh pr merge / ready / close are the user's review workflow." \
+    "Report the PR URL and let the user review, mark ready, and merge."
+  has '(^|[^[:alnum:]_.-])gh[[:space:]]+repo[[:space:]]+delete([[:space:]]|$)' && block \
+    "deleting repositories is prohibited." \
+    "Report it and let the user manage repositories."
+  if has '(^|[^[:alnum:]_.-])gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'; then
+    has '--draft([[:space:]=]|$)|[[:space:]]-d([[:space:]]|$)' || block \
+      "gh pr create without --draft is prohibited." \
+      "PRs are always opened as drafts: gh pr create --draft ... The user marks them ready after review."
+    has '--body-file([[:space:]=]|$)|[[:space:]]-F([[:space:]]|$)' || block \
+      "gh pr create without --body-file is prohibited." \
+      "The PR body is the reviewed PR document: gh pr create --draft --body-file docs/pr/<feature>/<N>-<aggregation>.md — never a hand-written body."
+  fi
+fi
+
+[ "$is_git" = 0 ] && exit 0
 
 # --- Hook / config bypass vectors --------------------------------------------
 has '--no-verify' && block \
@@ -72,7 +97,7 @@ branch=""
 
 if has '(^|[^[:alnum:]_.-])git[[:space:]]([^|;&]*[[:space:]])?(commit|push)([[:space:]]|$)'; then
   case "$branch" in
-    main | master | develop)
+    main | master | develop | release/* | hotfix/*)
       block "current branch '$branch' is protected (git flow): no direct commit or push." \
         "Create a work branch first: git switch -c feature/<descriptor> develop"
       ;;
@@ -80,9 +105,9 @@ if has '(^|[^[:alnum:]_.-])git[[:space:]]([^|;&]*[[:space:]])?(commit|push)([[:s
 fi
 
 if has '(^|[^[:alnum:]_.-])git[[:space:]]([^|;&]*[[:space:]])?push([[:space:]]|$)'; then
-  has 'push[^|;&]*[[:space:]:](main|master|develop)([[:space:]]|$)' && block \
-    "pushing to a protected branch (main / master / develop) is prohibited." \
-    "Only feature/* branches are pushed; merging into flow branches is the user's job via PR."
+  has 'push[^|;&]*[[:space:]:](main|master|develop|release/[^[:space:]]+|hotfix/[^[:space:]]+)([[:space:]]|$)' && block \
+    "pushing to a protected branch (main / master / develop / release/* / hotfix/*) is prohibited." \
+    "Only feature/* branches are pushed; flow branches are the user's territory."
   has 'push[^|;&]*([[:space:]]--delete([[:space:]]|$)|[[:space:]]:[^[:space:]])' && block \
     "deleting remote refs via push is prohibited." \
     "Report the cleanup need and let the user delete branches."
