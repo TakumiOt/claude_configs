@@ -234,6 +234,10 @@
           {
             "type": "command",
             "command": "bash ~/.claude/scripts/git-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.claude/scripts/cargo-guard.sh"
           }
         ]
       }
