@@ -2,7 +2,6 @@
 paths:
   - "**/*.{rs,py,ts,tsx,js,jsx,mjs,cjs,go,java,kt,rb,cs,cpp,c,h,hpp,scala}"
   - "docs/spec/**"
-  - "docs/pr/**"
   - "docs/adr/**"
 ---
 

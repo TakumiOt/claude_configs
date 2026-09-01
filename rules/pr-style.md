@@ -1,11 +1,11 @@
 ---
 name: pr-style
-description: Authoritative style rules for every section of docs/pr/<feature>/<N>-<aggregation>.md. Wholly pr-writer-owned (architect does not pre-fill anything); enforced by pr-reviewer.
+description: Authoritative style rules for every section of the GitHub PR body (composed by pr-writer into a scratchpad file, published via --body-file). Wholly pr-writer-owned; enforced by pr-reviewer.
 ---
 
-# PR Document Style Rules
+# PR Body Style Rules
 
-Single source of truth for the style of `docs/pr/<feature>/<N>-<aggregation>.md`. `pr-writer` writes the document; `pr-reviewer` enforces these rules via the Severity Matrix at the bottom.
+Single source of truth for the style of the GitHub PR body. `pr-writer` composes the body (into a scratchpad file the orchestrator publishes via `--body-file`); `pr-reviewer` enforces these rules via the Severity Matrix at the bottom. No PR document file lives under `docs/` — the PR body itself is the deliverable (使い捨ての差分情報, per the 時計分離 rule).
 
 ## Precedence
 
@@ -13,15 +13,13 @@ This file wins over style sections in `~/.claude/agents/pr-writer.md` and `~/.cl
 
 ## Scope
 
-Applies to all sections: 背景・目的, スコープ, 受け入れ基準, 依存PR, 関連ドキュメント, 変更内容, 仕様からの変更点, テスト, 影響範囲・注意点. The PR document is wholly pr-writer-owned and is created from scratch at aggregation time per `~/.claude/CLAUDE.md` Phase 3.
+Applies to all sections: 背景・目的, スコープ, 受け入れ基準, 依存PR, 関連ドキュメント, 変更内容, 仕様からの変更点, テスト, 影響範囲・注意点. The PR body is wholly pr-writer-owned, composed in two stages per `~/.claude/CLAUDE.md` Phase 1 step 3 / Phase 3.
 
-## ディレクトリ README
+## PBI Issue Linkage
 
-`docs/pr/` 配下のディレクトリは `README.md` を入口として持つ (`~/.claude/CLAUDE.md` 「README everywhere」)。いずれも日本語で、`pr-writer` が PR ファイル作成時に作成・更新する。
-
-- `docs/pr/README.md` — 目的・責務 (PR 文書を feature 単位で置く)、収録方針 (feature ごとにサブディレクトリ、ファイル名は `N-<aggregation>.md`、aggregation 時に `pr-writer` が作成)、目次 (各 feature への相対リンク)。
-- `docs/pr/<feature>/README.md` — その feature が届けるものを 1 行で示し、収録する PR を連番順に各 1 行で列挙する (`N-<aggregation>.md` へのリンクと主旨)。依存順があれば明示する。
-- README はナビゲーションであり、PR 本文のセクションをここに書かない。
+- The body's **last line** is `Closes #<issue>`, where `<issue>` is the shipped PBI's GitHub Issue number — merging the PR then closes the PBI automatically.
+- Exactly one `Closes` line per PR (one PBI = one PR). A body with no `Closes` line, or with several, is a structural defect.
+- The PBI issue is the source the 受け入れ基準 lead group quotes; cite it by its slice sentence in prose, by `#<issue>` only in the `Closes` line and the 依存PR section.
 
 ## Language
 
@@ -58,12 +56,12 @@ Worked examples for "lead with role" and "group by concept" live in `~/.claude/a
 
 ## Stage-1 Placeholder (draft PR period)
 
-The PR document is authored in two stages (`~/.claude/CLAUDE.md` Phase 1 step 3 / Phase 3). Between them, the implementation-dependent sections are placeholders by design:
+The PR body is authored in two stages (`~/.claude/CLAUDE.md` Phase 1 step 3 / Phase 3). Between them, the implementation-dependent sections are placeholders by design:
 
 - During stage 1 (from draft PR opening until aggregation), each of 変更内容 / 仕様からの変更点 / テスト / 影響範囲・注意点 consists of exactly the canonical line `実装完了後に記載。` — nothing more.
 - Free-form "planned" content in these sections (predicted diffs, expected test lists) is prohibited at stage 1 — it is fabrication ungrounded in any diff.
-- The Severity Matrix below grades the **completed (stage-2) document**; `pr-reviewer` reviews only after stage 2. A placeholder line remaining at review time is 🔴.
-- Design-grounded sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント) follow the full style rules from stage 1 onward.
+- The Severity Matrix below grades the **completed (stage-2) body**; `pr-reviewer` reviews only after stage 2. A placeholder line remaining at review time is 🔴.
+- Design-grounded sections (背景・目的 / スコープ / 受け入れ基準 / 依存PR / 関連ドキュメント) and the `Closes #<issue>` line follow the full rules from stage 1 onward.
 
 ## Per-Section Style
 
@@ -82,19 +80,19 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 
 ### 受け入れ基準
 
-- The first `###` group is the shipped PBI itself: its heading is the PBI's slice sentence, and its bullets quote the PBI's slice-level 受け入れ基準 (the 動作確認 criteria) from the PBI file (`docs/tasks/<work-name>/<N>-<pbi>.md`).
+- The first `###` group is the shipped PBI itself: its heading is the PBI's slice sentence, and its bullets quote the PBI's slice-level 受け入れ基準 (the 動作確認 criteria) from the PBI issue body.
 - Subsequent groups are per task, using `###` sub-headings. Each `###` heading is the bundled task's scope sentence (or a short paraphrase that preserves intent). Under each heading, list that task's acceptance criteria as plain bullets. **No AC ID prefixes** (no `AC-N:` / `AC-<tag>-<n>:` etc.).
-- Each bullet is one measurable, verifiable criterion sourced verbatim from the PBI file's slice-level 受け入れ基準 or the bundled task's 受け入れ基準 cell in its タスク分解 table. Do not invent criteria, do not silently absorb implementation drift.
+- Each bullet is one measurable, verifiable criterion sourced verbatim from the PBI issue's slice-level 受け入れ基準 or the bundled task's 受け入れ基準 cell in its タスク分解 table. Do not invent criteria, do not silently absorb implementation drift.
 - When the aggregation bundles only 1–2 tasks, `###` sub-headings are still required so the structure stays consistent across PRs.
 
 ### 依存PR
 
-- Bullets of relative paths to prerequisite PR files, or `なし`. Inferred from the bundled tasks' 依存タスク entries (which themselves cite prerequisites by content, not ID).
+- Bullets of prerequisite PR references as `#<number>` (with the PR title or a one-line gist), or `なし`. Inferred from the bundled tasks' 依存タスク entries (which themselves cite prerequisites by content, not ID).
 - Non-PR conditions go on their own bullet prefixed `前提条件: ` (e.g., dependency-approval requirements, environment-variable settings).
 
 ### 関連ドキュメント
 
-- Bullets of relative Markdown links. Always include the spec document (the touched `docs/spec/<capability>/` directories); add ADRs the bundled tasks reference. Never absolute paths.
+- Bullets of repo-root-relative paths in backticks (e.g. `` `docs/spec/server/counting-ingestion/` ``) — GitHub PR bodies do not resolve relative Markdown links, so paths are cited as text. Always include the touched `docs/spec/<capability>/` directories; add ADRs the bundled tasks reference. Never absolute paths.
 
 ### 変更内容
 
@@ -155,7 +153,7 @@ Every section follows the Formatting Constraints above. Section-specific rules b
 | 受け入れ基準 bullets prefixed with `AC-N:` / `AC-<tag>-<n>:` etc. (IDs were globally retired) | 🔴 |
 | 受け入れ基準 lacks `###` task-scope groupings (flat bullet list) | 🔴 |
 | 受け入れ基準 lacks the lead PBI group (slice sentence heading + slice-level AC) | 🟡 |
-| `docs/pr/` or a `docs/pr/<feature>/` directory missing its `README.md` entry point, or the feature README not updated when this PR was added | 🔴 |
+| `Closes #<issue>` line missing, duplicated, or citing the wrong PBI issue | 🔴 |
 | Stage-1 placeholder line `実装完了後に記載。` remaining in any section at review time (stage 2 incomplete) | 🔴 |
 | スコープ describes only internal plumbing with no exercisable end-to-end behavior (the PR is not a verifiable vertical slice) | 🟡 |
 | テスト shows only unit coverage with no end-to-end / integration / manual verification path for the slice | 🟡 |
