@@ -53,6 +53,11 @@
       "Bash(gh pr status:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue status:*)",
       "Read(./.env.example)",
       "Read(~/.claude/rules/)",
       "Bash(docker compose:*)",
@@ -62,6 +67,8 @@
       "Bash(gh pr merge:*)",
       "Bash(gh pr ready:*)",
       "Bash(gh pr close:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh issue delete:*)",
       "Bash(gh repo delete:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
@@ -343,7 +350,9 @@
         "**/*.tfstate.backup",
         "**/terraform.tfvars"
       ],
-      "allowRead": ["~/.config/gh"]
+      "allowRead": [
+        "~/.config/gh"
+      ]
     }
   },
   "effortLevel": "medium",

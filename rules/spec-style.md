@@ -18,9 +18,9 @@ Applies to every Markdown file under `docs/spec/`. Three kinds of documents:
 - **機能領域仕様** (`docs/spec/<capability>/`) — one directory per capability (a user-observable feature / behavior the system promises). The canonical axis of the spec.
 - **横断・技術仕様** (`docs/spec/_platform/`, and similar cross-cutting dirs) — cross-cutting technical concerns that are real but are not user-facing capabilities (infrastructure platform, shared kernel).
 
-`タスク分解` is **not** a spec document. It lives in a `docs/tasks/<work-name>/` directory (a README backlog index plus one PBI file per slice) with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
+`タスク分解` is **not** a spec document. It lives in GitHub Issues (a tracking issue as backlog index plus one PBI issue per slice) with its own format defined in `~/.claude/agents/architect.md`, and is not governed by this file.
 
-ADR files (`docs/adr/<NNNN>-<title>.md`) and PR files (`docs/pr/**`) follow their own templates and are not covered here.
+ADR files (`docs/adr/<NNNN>-<title>.md`) and PR bodies (`~/.claude/rules/pr-style.md`) follow their own templates and are not covered here.
 
 ## Core Principle: Living Specification
 
@@ -34,7 +34,7 @@ Three kinds of information have three different lifetimes; mixing them is what m
 |---|---|---|
 | なに/どう — 現在の振る舞い・制約・データの意味 | 常に最新 | `docs/spec/`(この文書群) |
 | なぜ — 理由・トレードオフ・代替案・移行の歴史 | 時点固定・追記のみ | `docs/adr/` |
-| この変更で何が変わったか — 差分 | 使い捨て | `docs/pr/` |
+| この変更で何が変わったか — 差分 | 使い捨て | GitHub の PR 本文 |
 
 - 仕様書には**理由を書かない**。判断の背景は ADR に置き、相対リンクで参照する。
 - 「A案を採用しB案を却下した」のような時点固定の語りを仕様書に残すと、読む頃には選択肢自体が陳腐化して半分が腐る。
