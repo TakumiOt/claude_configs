@@ -12,6 +12,7 @@
 
 # Inside skills/, exclude packaged zips and runtime artifacts.
 skills/*.zip
+skills/synced/
 
 # Never commit credentials or local overrides even if re-included above.
 .credentials.json
