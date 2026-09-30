@@ -251,9 +251,10 @@ IMPORTANT: Git write access is split three ways. The **main conversation** owns 
 
 ### GitHub Projects (issue-driven development)
 
-Work is issue-driven and managed on a GitHub Project (Projects v2). Every issue and PR the main conversation creates — Path C artifacts, Path B PRs, and ad-hoc issues or PRs the user asks for — is added to the project and given a Status at creation, and its Status is advanced at the workflow points below. Applies to every repository; `git-guard.sh` blocks `gh issue create` / `gh pr create` without `--project`.
+Work is issue-driven and managed on a GitHub Project (Projects v2). Every issue and PR the main conversation creates — Path C artifacts, Path B PRs, and ad-hoc issues or PRs the user asks for — is added to the project and given a Status at creation, and its Status is advanced at the workflow points below. Applies to every repository; `git-guard.sh` blocks `gh issue create` / `gh pr create` without `--project` unless the repository opts out as described below.
 
 - **Project title**: taken from the repository's project-level `CLAUDE.md` (a `GitHub Project: <title>` line, optionally followed by a Status-name mapping). When the line is absent, ask the user for the project title before the first issue or PR of the session (on Path C, at the design gate) and propose adding the line to the repository's `CLAUDE.md`. Never guess a title, never create a project.
+- **Repositories without a project**: a repository that is deliberately not managed on a GitHub Project declares it with a line consisting exactly of `GitHub Project: none` in its own `CLAUDE.md` (at the git top level). `git-guard.sh` reads that line and lets `gh issue create` / `gh pr create` through without `--project`; the Status lifecycle below is then skipped. The line is added only at the user's explicit instruction. The `~/.claude` configuration repository itself is such a repository — the declaration at the end of this file applies only when this directory is the git top level.
 - **Adding to the project**: `--project "<title>"` on `gh issue create` / `gh pr create`; `--add-project "<title>"` on `gh issue edit` / `gh pr edit` for an item that was created without it.
 - **Setting Status**: `gh project item-edit <project number> --owner <owner> --url <issue or PR URL> --field Status --value "<option>"`. Resolve the project number once per session with `gh project list --owner <owner> --format json`; read the available options with `gh project field-list` when the default names below do not exist, pick the closest option, and say which one was used in the report.
 - **Status lifecycle** (default option names `Todo` / `In Progress` / `Done`; a repository's `CLAUDE.md` may remap them):
@@ -349,3 +350,9 @@ When adding, renaming, splitting, or retiring a rule file, perform all of the fo
 ### 6. Language
 
 Rule files are written in **English** (matching `~/.claude/agents/*.md`). Code identifiers and snippets stay in their native language. The user chat remains Japanese per the global Language Policy above.
+
+## This Repository
+
+The `~/.claude` configuration repository is not managed on a GitHub Project (see "GitHub Projects" under "Git Operations").
+
+GitHub Project: none

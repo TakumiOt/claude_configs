@@ -26,6 +26,14 @@ printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_.-])gh([[:space:]]|$)' && is_g
 
 has() { printf '%s' "$command" | grep -Eq -- "$1"; }
 
+# A repository opts out of GitHub Projects with a line `GitHub Project: none` in
+# the CLAUDE.md at its git top level (see CLAUDE.md "GitHub Projects").
+repo_has_no_project() {
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [ -f "$top/CLAUDE.md" ] && grep -Eq '^GitHub Project:[[:space:]]*none[[:space:]]*$' "$top/CLAUDE.md"
+}
+
 block() {
   {
     echo "BLOCKED: $1"
@@ -51,12 +59,12 @@ if [ "$is_gh" = 1 ]; then
     has '--body-file([[:space:]=]|$)|[[:space:]]-F([[:space:]]|$)' || block \
       "gh pr create without --body-file is prohibited." \
       "The PR body comes from the pr-writer-composed body file: gh pr create --draft --body-file <scratchpad-body-file> — never a hand-written inline body."
-    has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
+    repo_has_no_project || has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
       "gh pr create without --project is prohibited." \
       "Every PR is managed on the repository's GitHub Project: gh pr create --draft --body-file <file> --project \"<title>\" (see 'GitHub Projects'). Ask the user for the project title if unknown."
   fi
   if has '(^|[^[:alnum:]_.-])gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)'; then
-    has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
+    repo_has_no_project || has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
       "gh issue create without --project is prohibited." \
       "Every issue is managed on the repository's GitHub Project: gh issue create ... --project \"<title>\" (see 'GitHub Projects'). Ask the user for the project title if unknown."
   fi
