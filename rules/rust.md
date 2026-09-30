@@ -41,7 +41,7 @@ crates/                            # production code + test-support libraries
 │       ├── repository/            # implementations of every domain crate's repository port
 │       ├── http_client/           # external API clients (gateway implementations)
 │       └── messaging/             # message queue, event bus
-├── app/                           # composition root (binary)
+├── app/                           # composition root (binary); see "Composition-root crates" for multi-process layouts
 │   ├── Cargo.toml                 # depends on every crate above
 │   └── src/{lib.rs, bin/<name>.rs}
 ├── test-db/                       # test-support library (library-only)
@@ -64,26 +64,38 @@ The three runners above are the **standard runner set** (see `~/.claude/rules/te
 ### Per-crate rules
 
 - **Library by default**: every workspace crate exposes a `src/lib.rs`. Domain crates, `shared-kernel`, `infrastructure`, the test-support libraries under `crates/test-*/`, and the test-runner crates under `tests/<name>/` are library-only and have no `src/main.rs` or `src/bin/*.rs`.
-- **Binaries live in `app` only**: only the `app` crate ships executables. Place each binary entry point under `app/src/bin/<name>.rs` and keep the file as a thin shim — parse arguments, build the composition root by calling into `app`'s library, translate errors to exit codes. No business logic.
-  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Splitting `app` into `app/src/lib.rs` + `app/src/bin/*.rs` makes the composition root reachable from both the binary and the test-runner crates under `tests/<name>/`.
+- **Binaries live in composition-root crates only**: only composition-root crates (`app` by default — see "Composition-root crates" below) ship executables. Each keeps the `src/lib.rs` + `src/bin/<name>.rs` split: place each binary entry point under `<crate>/src/bin/<name>.rs` and keep the file as a thin shim — parse arguments, build the composition root by calling into the crate's library, translate errors to exit codes. No business logic.
+  - Reason: integration tests are compiled as separate crates and can only import the library crates' public APIs. A bare `src/main.rs` binary has no library to import, so the test harness cannot exercise it. Keeping each composition root as `src/lib.rs` + `src/bin/*.rs` makes it reachable from both its binary and the test-runner crates under `tests/<name>/`.
 - **Workspace-root `Cargo.toml`** is a virtual workspace: it declares `[workspace]` with the crate `members` list and shared `[workspace.dependencies]` / `[workspace.package]`, but no `[package]` of its own.
 
 Violations of these rules are graded in the Severity Matrix at the bottom of this file.
+
+### Composition-root crates
+
+A composition-root crate wires one deployable process: it builds the dependency graph, owns that process's binary entry points, and depends on every crate it wires.
+
+- **One deployable process (default)**: a single composition-root crate named `app`, as in the layout above.
+- **Several deployable processes**: one composition-root crate per process, placed under `crates/<process>/` and named after the process (e.g. a headless daemon and a desktop GUI shipped from the same workspace). Split when the processes have divergent build-time needs — a GUI whose `build.rs` embeds a frontend bundle, a process-only dependency — or when their wiring diverges enough that one `app` crate would carry feature flags to tell them apart.
+  - Each per-process crate keeps the `src/lib.rs` + `src/bin/<name>.rs` split from "Per-crate rules".
+  - Wiring shared by several processes goes in a library crate (conventionally `app`, which then ships no binary) that depends only on what the common wiring needs.
+  - A process-specific build-time concern (a `build.rs`, a build-only dependency) belongs to that process's own crate so sibling processes do not inherit it.
+- The `app` name in the rest of this file stands for "the composition-root crate(s)" — when the roots are split, read it as the per-process crates plus the optional shared wiring library.
 
 ### Dependency direction (workspace level)
 
 The compiler enforces this graph through each crate's `Cargo.toml` `[dependencies]`. `code-reviewer` performs a second-stage review of the dependency declarations as a backstop.
 
 - `shared-kernel` — depends on nothing.
-- `<domain-*>` — depends only on `shared-kernel`. **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
+- `<domain-*>` — depends only on `shared-kernel` (plus, from its `adapter/` module only, the optional adapter-shared leaf crate below). **Domain crates MUST NOT depend on each other.** Cross-domain orchestration goes through the central domain's use case calling other domains via injected ports (Gateway), never through a direct crate-to-crate dependency.
+- Adapter-shared leaf crate (optional; e.g. `http-common`) — holds framework-facing pieces that every domain's `adapter/` module would otherwise duplicate, such as the common error-envelope DTO and response helpers. It depends on no workspace crate, is referenced only from `adapter/` modules and composition-root crates, and never from `entity/` or `usecase/`. Introducing one is a workspace-structure decision — record the rationale in an ADR under the project's `docs/adr/`.
 - `infrastructure` — depends on every domain crate and `shared-kernel`. It implements each domain's Repository / Gateway ports so all DB and external-IO concerns live here.
-- `app` — depends on every crate. Wires the composition root, builds the Axum `Router`, owns binary entry points.
+- Composition-root crate(s) (`app`, or one per deployable process — see "Composition-root crates") — depend on every crate they wire. Each wires its process's composition root (e.g. builds the Axum `Router`) and owns that process's binary entry points. A shared wiring library, when present, depends only on what the common wiring needs and ships no binary.
 - `test-db` / `test-contract` (under `crates/`) — test-support libraries. `test-db` depends on `infrastructure` and the domain crates it seeds; `test-contract` depends on the domain crates whose port contracts it asserts plus `test-db`. Neither hosts test binaries.
-- Test-runner crates under `tests/<name>/` — each depends on the domain crates it exercises, `infrastructure`, `app`, `test-db`, and (where contract tests are wired) `test-contract`. They exist only as test harnesses.
+- Test-runner crates under `tests/<name>/` — each depends on the domain crates it exercises, `infrastructure`, the composition-root crate(s) it drives, `test-db`, and (where contract tests are wired) `test-contract`. They exist only as test harnesses.
 
 ### Adapter placement
 
-Adapters (HTTP controllers, request/response DTOs, presenters) live **inside each domain crate's `adapter/` module**, NOT in a separate workspace-level adapter crate. The `app` crate imports each domain's adapter module and composes the global router. This keeps domain cohesion high while still surfacing the routing graph from one place.
+Adapters (HTTP controllers, request/response DTOs, presenters) live **inside each domain crate's `adapter/` module**, NOT in a separate workspace-level adapter crate. The composition-root crate imports each domain's adapter module and composes the global router. This keeps domain cohesion high while still surfacing the routing graph from one place. The only adapter code allowed outside a domain crate is the optional adapter-shared leaf crate described in "Dependency direction".
 
 ### Cross-domain use cases
 
@@ -99,6 +111,8 @@ If the project genuinely has one bounded context, the workspace structure still 
 - [ ] Each crate directory contains its own `Cargo.toml` declaring `[package]` and `[dependencies]`.
 - [ ] Domain crate `Cargo.toml` files declare no dependency on other domain crates (verify in `[dependencies]`).
 - [ ] `shared-kernel`'s `Cargo.toml` declares no dependency on any other workspace crate.
+- [ ] An adapter-shared leaf crate (e.g. `http-common`), when present, declares no dependency on any other workspace crate, is referenced only from `adapter/` modules and composition-root crates, and has an ADR recording why it exists.
+- [ ] When several composition-root crates exist, each corresponds to one deployable process, and no `build.rs` / build-only dependency of one process sits in a crate another process also depends on.
 - [ ] Persistence and external-IO implementations live in the `infrastructure` crate; no domain crate contains DB pool / HTTP-client wiring.
 - [ ] Each domain crate's source layout uses `entity/` / `usecase/` / `adapter/` modules; the inward-only direction is preserved within the crate via module visibility (`pub(crate)` and narrower).
 - [ ] Cross-domain use cases live in the central domain's `usecase/` module and reach other domains only through Gateway ports.
@@ -302,11 +316,14 @@ Extractors (`Json<T>`, `Path<T>`, `State<T>`) must appear only in Controller sig
 
 | Observation | Severity |
 |---|---|
-| Business logic in `app/src/main.rs` / `app/src/bin/*.rs` beyond the thin-shim responsibilities | 🔴 |
-| Binary entry point (`main.rs` / `bin/*.rs`) in any crate other than `app` | 🔴 |
+| Business logic in a composition-root crate's `src/main.rs` / `src/bin/*.rs` beyond the thin-shim responsibilities | 🔴 |
+| Binary entry point (`main.rs` / `bin/*.rs`) in any crate other than a composition-root crate | 🔴 |
+| A process-specific build-time concern (`build.rs`, build-only dependency) placed in a crate shared by several deployable processes | 🟡 |
 | Workspace-root `Cargo.toml` carrying a `[package]` section (must remain a virtual workspace) | 🔴 |
 | Domain crate declaring a `Cargo.toml` dependency on another domain crate | 🔴 |
 | `shared-kernel` declaring a dependency on any other workspace crate | 🔴 |
+| Adapter-shared leaf crate referenced from `entity/` or `usecase/`, or declaring a dependency on any workspace crate | 🔴 |
+| Adapter-shared leaf crate introduced without an ADR recording the rationale | 🟡 |
 | Persistence / HTTP-client wiring (`sqlx`, `reqwest`, etc.) pulled into a domain crate instead of `infrastructure` | 🔴 |
 | Integration / E2E test placed anywhere outside the test-runner crates under `tests/<name>/` | 🔴 |
 | A `tests/` directory created inside a `crates/<production>/` crate or a `crates/test-*/` test-support library | 🔴 |
