@@ -5,7 +5,9 @@
 # hook blocks what prefix matching cannot express: flag-level bypass vectors
 # (--no-verify, git -c, --amend, --force), bulk staging, writes to the
 # protected git-flow branches (main / master / develop / release/* / hotfix/*),
-# and the gh review workflow (merge / ready / close; PRs must be drafts).
+# the gh review workflow (merge / ready / close; PRs must be drafts), and the
+# GitHub Projects policy (issue / PR creation must carry --project; project
+# structure — create / edit / close / fields / archive / delete — stays user-owned).
 # Registered in ~/.claude/settings.json under hooks.PreToolUse with matcher "Bash".
 # Exit 2 blocks the command and feeds stderr back to the agent.
 # Note: patterns match the raw command string, so a commit message that contains a
@@ -23,6 +25,14 @@ printf '%s' "$command" | grep -Eq '(^|[^[:alnum:]_.-])gh([[:space:]]|$)' && is_g
 [ "$is_git" = 0 ] && [ "$is_gh" = 0 ] && exit 0
 
 has() { printf '%s' "$command" | grep -Eq -- "$1"; }
+
+# A repository opts out of GitHub Projects with a line `GitHub Project: none` in
+# the CLAUDE.md at its git top level (see CLAUDE.md "GitHub Projects").
+repo_has_no_project() {
+  local top
+  top="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [ -f "$top/CLAUDE.md" ] && grep -Eq '^GitHub Project:[[:space:]]*none[[:space:]]*$' "$top/CLAUDE.md"
+}
 
 block() {
   {
@@ -49,7 +59,18 @@ if [ "$is_gh" = 1 ]; then
     has '--body-file([[:space:]=]|$)|[[:space:]]-F([[:space:]]|$)' || block \
       "gh pr create without --body-file is prohibited." \
       "The PR body comes from the pr-writer-composed body file: gh pr create --draft --body-file <scratchpad-body-file> — never a hand-written inline body."
+    repo_has_no_project || has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
+      "gh pr create without --project is prohibited." \
+      "Every PR is managed on the repository's GitHub Project: gh pr create --draft --body-file <file> --project \"<title>\" (see 'GitHub Projects'). Ask the user for the project title if unknown."
   fi
+  if has '(^|[^[:alnum:]_.-])gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)'; then
+    repo_has_no_project || has '--project([[:space:]=]|$)|[[:space:]]-p([[:space:]]|$)' || block \
+      "gh issue create without --project is prohibited." \
+      "Every issue is managed on the repository's GitHub Project: gh issue create ... --project \"<title>\" (see 'GitHub Projects'). Ask the user for the project title if unknown."
+  fi
+  has '(^|[^[:alnum:]_.-])gh[[:space:]]+project[[:space:]]+(create|edit|close|delete|copy|link|unlink|mark-template|field-create|field-delete|item-create|item-delete|item-archive)([[:space:]]|$)' && block \
+    "gh project structural changes are the user's." \
+    "The main conversation only registers items and sets Status (gh project item-edit). Creating / editing / closing projects, fields, and archiving or deleting items stay user-owned."
   if has '(^|[^[:alnum:]_.-])gh[[:space:]]+pr[[:space:]]+edit([[:space:]]|$)'; then
     has '--body([[:space:]=]|$)|[[:space:]]-b([[:space:]]|$)' && block \
       "gh pr edit with an inline --body is prohibited." \
